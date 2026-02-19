@@ -21,8 +21,7 @@ source ~/yolo-venv/bin/activate
 pip install --upgrade pip
 pip install ultralytics opencv-python
 
-# Save the environment to be used in a requirements.txt fr later
-pip freeze > ~/refit8_YOLO_camera/requirements.txt
+pip install -r ~/refit8_YOLO_camera/requirements.txt
 ```
 
 3. Download the YOLO Model
@@ -35,15 +34,16 @@ python3 ~/refit8_YOLO_camera/models/YOLO8n_pt_download.py
 mkdir -p ~/captures/photos ~/captures/videos ~/captures/yolo
 ```
 
-5. Once created once, you can activate the environment again with:
+5. Operating inside the .venv
+Once created once, you can activate the environment again with:
 ```bash
 source ~/yolo-venv/bin/activate
-pip install -r ~/refit8_YOLO_camera/requirements.txt
 ```
 
 To deactivate the .venv:
 ```bash
 deactivate
+```
 
 # You can confirm with
 which python
@@ -93,8 +93,7 @@ mpv ~/captures/videos/your_video.mp4
 ## Capturing YOLO Data
 To capture live YOLO data and then save it as a recording
 ```bash
-source ~/yolo-venv/bin/activate
-python ~/refit8_YOLO_camera/live_yolo_log.py
+python3 live_yolo_log.py
 ```
 This will run until the user presses ```q```
 
@@ -105,8 +104,5 @@ This will output 2 tiles into ```~/captures/yolo/```:
 ## Focusing the camera
 To launch the inteactive camera focus ui:
 ```bash
-source ~/yolo-venv/bin/activate
-python3 ~/refit8_YOLO_camera/focus_ui.py
-chmod +x focus_ui.sh
-./focus_ui.sh
+python3 focus_ui.py
 ```
