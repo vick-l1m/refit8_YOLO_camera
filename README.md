@@ -16,20 +16,38 @@ sudo apt install -y rpicam-apps
 
 2. Setup the python environment for YOLO
 ```bash
-python3 -m venv ~/yolo-venv
+python3 -m venv --system-site-packages ~/yolo-venv
 source ~/yolo-venv/bin/activate
 pip install --upgrade pip
 pip install ultralytics opencv-python
+
+# Save the environment to be used in a requirements.txt fr later
+pip freeze > ~/refit8_YOLO_camera/requirements.txt
 ```
 
 3. Download the YOLO Model
 ```bash
-python3 ~/refit8_YOLO_camera/model/YOLO8n_pt_download.py
+python3 ~/refit8_YOLO_camera/models/YOLO8n_pt_download.py
 ```
 
 4. Create a folder for data storage
 ```bash
 mkdir -p ~/captures/photos ~/captures/videos ~/captures/yolo
+```
+
+5. Once created once, you can activate the environment again with:
+```bash
+source ~/yolo-venv/bin/activate
+pip install -r ~/refit8_YOLO_camera/requirements.txt
+```
+
+To deactivate the .venv:
+```bash
+deactivate
+
+# You can confirm with
+which python
+python -c "import sys; print(sys.executable)"
 ```
 
 ## Capturing Raw Data
@@ -61,14 +79,34 @@ rpicam-vid -n -t 10000 -o "$OUT" --width 1280 --height 720 --framerate 30
 mpv --fs "$OUT"
 ```
 
+To access this data:
+```bash
+# Photos
+ls -lh ~/captures/photos
+xdg-open ~/captures/photos/your_image.jpg
+
+# Videos
+ls -lh ~/captures/videos
+mpv ~/captures/videos/your_video.mp4
+```
+
 ## Capturing YOLO Data
 To capture live YOLO data and then save it as a recording
 ```bash
 source ~/yolo-venv/bin/activate
-python ~/live_yolo_log.py
+python ~/refit8_YOLO_camera/live_yolo_log.py
 ```
 This will run until the user presses ```q```
 
 This will output 2 tiles into ```~/captures/yolo/```:
 - ```detections_YYYYMMDD_HHMMSS.json``` (per-frame list of everything it saw)
 - ```summary_YYYYMMDD_HHMMSS.json``` (unique objects + counts)
+
+## Focusing the camera
+To launch the inteactive camera focus ui:
+```bash
+source ~/yolo-venv/bin/activate
+python3 ~/refit8_YOLO_camera/focus_ui.py
+chmod +x focus_ui.sh
+./focus_ui.sh
+```

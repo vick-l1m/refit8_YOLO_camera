@@ -13,7 +13,7 @@ picam2.configure(picam2.create_preview_configuration(
 ))
 picam2.start()
 
-INTERVAL = 0.5  # seconds between detections
+INTERVAL = 1  # seconds between detections
 last_inference_time = 0
 latest_results = None
 
@@ -39,7 +39,7 @@ while True:
     else:
         annotated = frame
 
-    cv2.imshow("YOLO Fixed Interval (0.5s)", annotated)
+    cv2.imshow("YOLO Fixed Interval (1s)", annotated)
 
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
