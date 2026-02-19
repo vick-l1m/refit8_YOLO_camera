@@ -31,7 +31,7 @@ python3 ~/refit8_YOLO_camera/models/YOLO8n_pt_download.py
 
 4. Create a folder for data storage
 ```bash
-mkdir -p ~/captures/photos ~/captures/videos ~/captures/yolo
+mkdir -p /captures/photos /captures/videos /captures/yolo
 ```
 
 5. Operating inside the .venv
@@ -93,7 +93,7 @@ mpv ~/captures/videos/your_video.mp4
 ## Capturing YOLO Data
 To capture live YOLO data and then save it as a recording
 ```bash
-python3 live_yolo_log.py
+python3 src/live_yolo_log.py
 ```
 This will run until the user presses ```q```
 
@@ -104,5 +104,5 @@ This will output 2 tiles into ```~/captures/yolo/```:
 ## Focusing the camera
 To launch the inteactive camera focus ui:
 ```bash
-python3 focus_ui.py
+python3 src/focus_ui.py
 ```

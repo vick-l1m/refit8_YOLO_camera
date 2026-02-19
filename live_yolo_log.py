@@ -29,7 +29,6 @@ controls = picam2.camera_controls
 print("Camera controls available:", list(controls.keys()))
 
 if "AfMode" in controls:
-    # libcamera commonly: 0=manual, 1=auto, 2=continuous (varies by camera/driver)
     try:
         picam2.set_controls({"AfMode": 2})
         print("Autofocus: AfMode=2 (continuous)")
@@ -46,53 +45,77 @@ else:
 # ----------------------------
 # YOLO settings
 # ----------------------------
-INTERVAL = 1.0          # seconds between detections
-IMGSZ = 640             # try 416 or 320 for more speed
+INTERVAL = 1.0
+IMGSZ = 320 # Other image sizes: 640, 416 
 CONF = 0.25
 
-latest_annotated = None
+latest_annotated_bgr = None
 latest_lock = threading.Lock()
 
 inference_busy = False
 last_inference_time = 0.0
 
-def run_inference(frame_bgr):
-    global latest_annotated, inference_busy
-
+def run_inference(frame_rgb):
+    """Run YOLO on an RGB frame, store annotated frame in BGR for OpenCV display."""
+    global latest_annotated_bgr, inference_busy
     try:
-        # You can try half=True for speed (works on some setups; safe to remove if errors)
         results = model.predict(
-            frame_bgr,
+            frame_rgb,          
             imgsz=IMGSZ,
             conf=CONF,
             verbose=False
         )
-        annotated = results[0].plot()
+        annotated = results[0].plot()  # could be RGB or BGR depending on backend
+        # Force annotated to BGR for cv2.imshow by converting from RGB -> BGR
+        annotated_bgr = cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR)
+
         with latest_lock:
-            latest_annotated = annotated
+            latest_annotated_bgr = annotated_bgr
     except Exception as e:
         print("Inference error:", e)
     finally:
         inference_busy = False
 
+# ----------------------------
+# FPS counter (smoothed)
+# ----------------------------
+fps = 0.0
+last_frame_t = time.time()
+alpha = 0.1  # smoothing factor (0.05-0.2 nice range)
+
 print("Press q to quit")
 
 while True:
-    # Grab frame as fast as possible
     frame_rgb = picam2.capture_array()
-    frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
 
     now = time.time()
 
-    # Kick off inference in the background every INTERVAL seconds
+    # Kick off inference every INTERVAL seconds (non-blocking)
     if (now - last_inference_time >= INTERVAL) and not inference_busy:
         inference_busy = True
         last_inference_time = now
-        threading.Thread(target=run_inference, args=(frame_bgr.copy(),), daemon=True).start()
+        threading.Thread(target=run_inference, args=(frame_rgb.copy(),), daemon=True).start()
 
-    # Display latest annotated frame if available, else raw live frame
+    # Display annotated if available; otherwise display live camera
+    # Convert live frame RGB -> BGR for OpenCV display
+    frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+
     with latest_lock:
-        display = latest_annotated if latest_annotated is not None else frame_bgr
+        display = latest_annotated_bgr if latest_annotated_bgr is not None else frame_bgr
+
+    # Update FPS (display loop FPS)
+    dt = now - last_frame_t
+    last_frame_t = now
+    inst_fps = (1.0 / dt) if dt > 0 else 0.0
+    fps = (1 - alpha) * fps + alpha * inst_fps
+
+    # Draw FPS bottom-right
+    text = f"{fps:.1f} FPS"
+    (tw, th), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+    h, w = display.shape[:2]
+    x = w - tw - 10
+    y = h - 10
+    cv2.putText(display, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
 
     cv2.imshow("YOLO Fixed Interval (threaded)", display)
 

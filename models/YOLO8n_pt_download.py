@@ -3,7 +3,7 @@ import shutil
 from ultralytics import YOLO
 
 def download_yolo_model():
-    models_dir = Path.home() / "models"
+    models_dir = Path.home() / "refit8_YOLO_camera" / "models"
     models_dir.mkdir(exist_ok=True)
 
     pt_path = models_dir / "yolov8n.pt"
