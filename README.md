@@ -46,6 +46,7 @@ deactivate
 ```
 
 # You can confirm with
+```bash
 which python
 python -c "import sys; print(sys.executable)"
 ```
@@ -62,19 +63,20 @@ rpicam-still -n -t 300 -o "$OUT" --width 1920 --height 1080
 # Display it on the LCD screen
 feh -F "$OUT"
 ```
+
 ```-n``` disables the preview window
 
 **Recording**
 To take a video while viewing it on a screen 
 ```bash
-OUT=~/captures/videos/video_$(date +%Y%m%d_%H%M%S).mp4
+OUT=/captures/videos/video_$(date +%Y%m%d_%H%M%S).mp4
 rpicam-vid -t 10000 -o "$OUT" --width 1280 --height 720 --framerate 30
 ```
 Takes a video for 10s - (```-t 10000 ms```)
 
 To take the video and then play it back after
 ```bash
-OUT=~/captures/videos/video_$(date +%Y%m%d_%H%M%S).mp4
+OUT=/captures/videos/video_$(date +%Y%m%d_%H%M%S).mp4
 rpicam-vid -n -t 10000 -o "$OUT" --width 1280 --height 720 --framerate 30
 mpv --fs "$OUT"
 ```
@@ -82,12 +84,12 @@ mpv --fs "$OUT"
 To access this data:
 ```bash
 # Photos
-ls -lh ~/captures/photos
-xdg-open ~/captures/photos/your_image.jpg
+ls -lh /captures/photos
+xdg-open /captures/photos/your_image.jpg
 
 # Videos
-ls -lh ~/captures/videos
-mpv ~/captures/videos/your_video.mp4
+ls -lh /captures/videos
+mpv /captures/videos/your_video.mp4
 ```
 
 ## Capturing YOLO Data
