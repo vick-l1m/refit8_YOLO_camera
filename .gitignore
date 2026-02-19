@@ -416,3 +416,8 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Image, video and yolo capture
+captures/images
+captures/videos
+captures/yolo
