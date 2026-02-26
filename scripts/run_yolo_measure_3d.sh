@@ -11,7 +11,9 @@ set -euo pipefail
 # -----------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"   # assumes script is in a subfolder under repo root
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"   # scripts/ is one level down
+
+cd "$PROJECT_ROOT"
 
 # --- Python interpreter ---
 # If you're using a venv, point this to it. Otherwise "python3".

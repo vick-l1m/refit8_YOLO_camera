@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"   # scripts/ is one level down
+
+cd "$PROJECT_ROOT"
+
 # Defaults
 # WIDTH=1280 HEIGHT=720 FPS=30 TIME_MS=10000 NAME="" OUTDIR fixed below PLAY=0 PREVIEW=1
 #

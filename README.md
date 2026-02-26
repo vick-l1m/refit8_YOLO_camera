@@ -57,6 +57,7 @@ python -c "import sys; print(sys.executable)"
 
 6. Make each script excecutable
 ```bash
+cd scripts
 chmod +x still_image.sh
 chmod +x record_video.sh
 chmod +x run_yolo_still_image.sh

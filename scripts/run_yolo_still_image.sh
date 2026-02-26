@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"   # scripts/ is one level down
+
+cd "$PROJECT_ROOT"
+
 # Run the module with sensible defaults.
 # Any args you pass to this script override/extend the defaults via "$@"
 
