@@ -4,7 +4,7 @@ set -euo pipefail
 # Run the module with sensible defaults.
 # Any args you pass to this script override/extend the defaults via "$@"
 
-python3 src/still_image_yolo.py \
+python3 src/yolo_still_image.py \
   --width 1920 \
   --height 1080 \
   --time-ms 300 \

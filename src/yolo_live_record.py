@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import cv2
-from numpy.ma import size
 from ultralytics import YOLO
 
 from yolo_helpers import (
@@ -39,10 +38,12 @@ class BaseCamera:
 
 
 class Picamera2Camera(BaseCamera):
-    def __init__(self, camera_num=0, size=(1280, 720)):
+    def __init__(self, camera_num=0, size=(1280, 720), autofocus: bool = True, af_mode: int = 2):
         from picamera2 import Picamera2
         self.camera_num = camera_num
         self.size = size
+        self.autofocus = autofocus
+        self.af_mode = af_mode
         self.picam2 = Picamera2(camera_num=camera_num)
 
     def start(self):
@@ -86,10 +87,11 @@ class OpenCVCamera(BaseCamera):
             self.cap.release()
 
 
-def make_camera(backend: str, *, camera_num: int, device: str, size: tuple) -> BaseCamera:
+def make_camera(backend: str, *, camera_num: int, device: str, size: tuple,
+                autofocus: bool, af_mode: int) -> BaseCamera:
     backend = backend.lower()
     if backend in ("picam2", "picamera2", "libcamera"):
-        return Picamera2Camera(camera_num=camera_num, size=size, autofocus=True, af_mode=2)    
+        return Picamera2Camera(camera_num=camera_num, size=size, autofocus=autofocus, af_mode=af_mode)  
     if backend in ("opencv", "v4l2", "usb"):
         dev = device
         if isinstance(dev, str) and dev.isdigit():
@@ -155,7 +157,7 @@ def parse_args() -> AppConfig:
     p.add_argument("--infer-interval", type=float, default=0.5, help="Seconds between YOLO inferences (default 0.5)")
 
     # Autofocus (Picamera2)
-    p.add_argument("--autofocus", action="store_true", default=True)
+    p.add_argument("--no-autofocus", action="store_true", help="Disable autofocus (default: enabled)")
     p.add_argument("--af-mode", type=int, default=2)
 
     a = p.parse_args()
@@ -175,7 +177,7 @@ def parse_args() -> AppConfig:
         imgsz=a.imgsz,
         conf=a.conf,
         infer_interval_s=a.infer_interval,
-        autofocus=a.autofocus,
+        autofocus=(not a.no_autofocus),
         af_mode=a.af_mode,
     )
 
@@ -213,16 +215,10 @@ def main():
         camera_num=cfg.camera_num,
         device=cfg.device,
         size=(cfg.width, cfg.height),
+        autofocus=cfg.autofocus,
+        af_mode=cfg.af_mode,
     )
     cam.start()
-
-    # Autofocus optional
-    if cfg.autofocus and hasattr(cam, "enable_autofocus"):
-        ok = cam.enable_autofocus(mode=cfg.af_mode)
-        if not ok:
-            print("Autofocus could not be enabled on this camera/driver.")
-    elif cfg.autofocus:
-        print("Autofocus requested, but current backend does not support it (OpenCV).")
 
     # Video writer (mp4)
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
