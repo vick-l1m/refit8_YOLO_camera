@@ -8,42 +8,12 @@ from pathlib import Path
 import cv2
 from ultralytics import YOLO
 
-from Arducam_ws.camera_focus import rpicam_autofocus_args
+from camera_capture import CameraCapture, CaptureConfig, RPICamStillConfig
 
 
 def ensure_dirs(images_dir: Path, data_dir: Path) -> None:
     images_dir.mkdir(parents=True, exist_ok=True)
     data_dir.mkdir(parents=True, exist_ok=True)
-
-
-def capture_still_rpicam(
-    out_path: Path,
-    width: int,
-    height: int,
-    time_ms: int,
-    preview: bool,
-    autofocus: bool,
-    af_mode: str,
-) -> None:
-    """
-    Capture a still image using rpicam-still.
-    If preview=False -> uses -n (no preview window).
-    """
-    cmd = [
-        "rpicam-still",
-        "-t", str(time_ms),
-        "-o", str(out_path),
-        "--width", str(width),
-        "--height", str(height),
-    ]
-
-    if autofocus:
-        cmd += rpicam_autofocus_args(enabled=True, mode=af_mode)
-
-    if not preview:
-        cmd.insert(1, "-n")  # disable preview
-
-    subprocess.run(cmd, check=True)
 
 
 def summarize_detections(results0) -> dict:
@@ -86,7 +56,6 @@ def summarize_detections(results0) -> dict:
         per_class[label]["conf_sum"] += float(conf)
         per_class[label]["max_conf"] = max(per_class[label]["max_conf"], float(conf))
 
-    # finalize avg_conf
     objects = {}
     for label, v in per_class.items():
         objects[label] = {
@@ -103,7 +72,7 @@ def summarize_detections(results0) -> dict:
 
 def main():
     p = argparse.ArgumentParser(
-        description="Capture a still image with rpicam-still, run YOLO, save annotated image + JSON summary."
+        description="Capture a still image with rpicam-still (via camera_capture.py), run YOLO, save annotated image + JSON summary."
     )
 
     # Still-image capture params (mirrors your still script knobs)
@@ -115,21 +84,31 @@ def main():
     p.add_argument("--no-preview", action="store_true", help="Disable preview window (adds -n)")
 
     # YOLO params
-    p.add_argument("--model", type=str, default=str(Path.home() / "models" / "yolov8n.pt"),
-                   help="Path to YOLO .pt model (default: ~/models/yolov8n.pt)")
+    p.add_argument(
+        "--model",
+        type=str,
+        default=str(Path.home() / "models" / "yolov8n.pt"),
+        help="Path to YOLO .pt model (default: ~/models/yolov8n.pt)",
+    )
     p.add_argument("--imgsz", type=int, default=320, help="YOLO inference size (default: 320)")
     p.add_argument("--conf", type=float, default=0.25, help="YOLO confidence threshold (default: 0.25)")
 
-    # autofocus params
+    # Autofocus params
     p.add_argument("--autofocus", action="store_true", help="Enable autofocus (rpicam-still)")
-    p.add_argument("--af-mode", type=str, default="continuous",
-               choices=["auto", "continuous", "manual"],
-               help="Autofocus mode for rpicam-still (default: continuous)")
+    p.add_argument(
+        "--af-mode",
+        type=str,
+        default="continuous",
+        choices=["auto", "continuous", "manual"],
+        help="Autofocus mode for rpicam-still (default: continuous)",
+    )
 
     args = p.parse_args()
 
-    # Output folders (as requested)
-    images_dir = Path.home() / "captures" / "yolo" / "images"
+    # Output folders
+    project_root = Path(__file__).resolve().parents[1]
+    base_captures = project_root / "captures"
+    images_dir = base_captures / "yolo" / "images"
     data_dir = images_dir / "data"
     ensure_dirs(images_dir, data_dir)
 
@@ -140,21 +119,28 @@ def main():
     out_img_path = images_dir / f"{args.name}.jpg"
     out_json_path = data_dir / f"{args.name}.json"
 
-    # 1) capture still (raw overwrite to same path first, then we overwrite with annotated)
+    # 1) capture still -> file
     print(f"[1/3] Capturing still -> {out_img_path}")
-    capture_still_rpicam(
-        out_path=out_img_path,
-        width=args.width,
-        height=args.height,
-        time_ms=args.time_ms,
-        preview=(not args.no_preview),
-        autofocus=args.autofocus,
-        af_mode=args.af_mode,
+
+    cap_cfg = CaptureConfig(
+        backend="rpicam-still",
+        rpicam=RPICamStillConfig(
+            width=args.width,
+            height=args.height,
+            time_ms=args.time_ms,
+            preview=(not args.no_preview),
+            autofocus=args.autofocus,
+            af_mode=args.af_mode,
+        ),
     )
+
+    cam = CameraCapture(cap_cfg)
+    cam.capture_to_file(out_img_path)
 
     # 2) run YOLO on captured image
     print(f"[2/3] Running YOLO model -> {args.model}")
     model = YOLO(args.model)
+
     frame_bgr = cv2.imread(str(out_img_path))
     if frame_bgr is None:
         raise RuntimeError(f"Failed to read captured image: {out_img_path}")
@@ -164,10 +150,9 @@ def main():
     results = model.predict(frame_rgb, imgsz=args.imgsz, conf=args.conf, verbose=False)
     r0 = results[0]
 
-    # Ultralytics plot() returns an annotated image (typically BGR suitable for cv2.imwrite)
     annotated_bgr = r0.plot()
 
-    # Save annotated image (overwrites the captured image, now with boxes/labels)
+    # Save annotated image (overwrites captured image with boxes/labels)
     cv2.imwrite(str(out_img_path), annotated_bgr)
     print(f"Saved annotated image -> {out_img_path}")
 
@@ -186,13 +171,14 @@ def main():
             "height": args.height,
             "time_ms": args.time_ms,
             "preview": (not args.no_preview),
+            "autofocus": args.autofocus,
+            "af_mode": args.af_mode,
+            "backend": "rpicam-still",
         },
         **summary,
     }
 
-    with open(out_json_path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2)
-
+    out_json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"[3/3] Saved JSON -> {out_json_path}")
 
     # Optional display

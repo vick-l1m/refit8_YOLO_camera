@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Storage location
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+
 # Defaults
 WIDTH=1280
 HEIGHT=720
 FPS=30
 TIME_MS=10000
 NAME=""             # if empty -> auto timestamp
-OUTDIR="$HOME/captures/videos"
+OUTDIR="$PROJECT_ROOT/captures/videos"
 PLAY=0              # 1 = play after recording, 0 = don't
 PREVIEW=1           # 1 = show preview while recording, 0 = disable preview (-n)
 AUTOFOCUS=1          # 1 = enable autofocus (default on)

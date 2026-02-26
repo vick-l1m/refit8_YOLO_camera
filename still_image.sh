@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Storage location
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+
 # Defaults
 WIDTH=1920
 HEIGHT=1080
-NAME=""            # if empty -> auto timestamp
-OUTDIR="$HOME/captures/photos"
-DISPLAY=1          # 1 = show with feh, 0 = don't
-PREVIEW=0          # 0 = use -n (no preview), 1 = allow preview window
-TIME_MS=300        # rpicam-still capture time (ms)
+NAME=""              # if empty -> auto timestamp
+OUTDIR="$PROJECT_ROOT/captures/photos"
+DISPLAY=1            # 1 = show with feh, 0 = don't
+PREVIEW=0            # 0 = use -n (no preview), 1 = allow preview window
+TIME_MS=300          # rpicam-still capture time (ms)
 AUTOFOCUS=1          # 1 = enable autofocus (default on)
 AF_MODE="continuous" # auto | continuous | manual (default: continuous)
 

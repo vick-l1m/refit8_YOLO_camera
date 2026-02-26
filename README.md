@@ -35,7 +35,7 @@ python3 ~/refit8_YOLO_camera/models/YOLO8n_pt_download.py
 
 4. Create a folder for data storage
 ```bash
-mkdir -p /captures/photos /captures/videos /captures/yolo/videos/data /captures/yolo/images/data
+mkdir -p /captures/photos /captures/videos /captures/yolo/videos/data /captures/yolo/images/data /captures/yolo/measure_3d/images/data
 ```
 
 5. Operating inside the .venv
@@ -61,6 +61,17 @@ chmod +x still_image.sh
 chmod +x record_video.sh
 chmod +x run_yolo_still_image.sh
 chmod +x run_yolo_live_record.sh
+```
+
+## YOLO Measure Object in 3D
+1. Calibrate the camera:
+```bash
+python3 calibrate_camera.py \
+  --images "calib_imgs/*.jpg" \
+  --rows 6 --cols 9 \
+  --square 0.025 \
+  --output cv/yolo/intrinsics/intrinsics_1920x1080.json \
+  --visualize
 ```
 
 ## Capturing Raw Data

@@ -190,7 +190,9 @@ def main():
     cfg = parse_args()
 
     # Output locations
-    video_outdir = Path.home() / "captures" / "yolo" / "videos"
+    project_root = Path(__file__).resolve().parents[1]
+    base_captures = project_root / "captures"
+    video_outdir = base_captures / "yolo" / "videos"
     ensure_dir(video_outdir)
 
     if not cfg.name.strip():
@@ -199,7 +201,7 @@ def main():
     video_path = video_outdir / f"{cfg.name}.mp4"
 
     # Snapshots + JSON log folder
-    snapshots_dir = Path.home() / "captures" / "yolo" / "videos" / "data" / cfg.name
+    snapshots_dir = base_captures / "yolo" / "videos" / "data" / cfg.name
     ensure_dir(snapshots_dir)
     events_json_path = snapshots_dir / "events.json"
 
