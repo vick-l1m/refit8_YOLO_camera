@@ -12,7 +12,7 @@ NAME=""              # if empty -> auto timestamp
 OUTDIR="$PROJECT_ROOT/captures/photos"
 DISPLAY=1            # 1 = show with feh, 0 = don't
 PREVIEW=1            # 0 = use -n (no preview), 1 = allow preview window
-TIME_MS=1000          # rpicam-still capture time (ms)
+TIME_MS=2000          # rpicam-still capture time (ms)
 AUTOFOCUS=1          # 1 = enable autofocus (default on)
 AF_MODE="continuous" # auto | continuous | manual (default: continuous)
 
