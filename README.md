@@ -61,17 +61,20 @@ chmod +x still_image.sh
 chmod +x record_video.sh
 chmod +x run_yolo_still_image.sh
 chmod +x run_yolo_live_record.sh
+chmod +x run_yolo_measure_3d.sh
+
+# follow this for any other scripts
 ```
 
 ## YOLO Measure Object in 3D
-1. Calibrate the camera:
+1. Calibrate the camera: see camera_calibration workspace
+2. Run the script:
 ```bash
-python3 calibrate_camera.py \
-  --images "calib_imgs/*.jpg" \
-  --rows 6 --cols 9 \
-  --square 0.025 \
-  --output cv/yolo/intrinsics/intrinsics_1920x1080.json \
-  --visualize
+# run with defaults 
+./camera_measurement/run_yolo_measure_3d.sh
+
+# Example: custom measurements
+./camera_measurement/run_yolo_measure_3d.sh --distance_m 1.7 --angle_deg 55 --depth_ratio 0.85 --class_name any
 ```
 
 ## Capturing Raw Data
