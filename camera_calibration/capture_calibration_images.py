@@ -19,8 +19,11 @@ import argparse
 
 import cv2
 
-from camera_capture import CameraCapture, CaptureConfig, RPICamStillConfig
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
+from src.camera_capture import CameraCapture, CaptureConfig, RPICamStillConfig
 
 def main():
     parser = argparse.ArgumentParser(description="Auto capture calibration images.")
@@ -30,8 +33,8 @@ def main():
                         help="Capture width (must match measurement resolution)")
     parser.add_argument("--height", type=int, default=1080,
                         help="Capture height (must match measurement resolution)")
-    parser.add_argument("--time-ms", type=int, default=2000,
-                        help="rpicam-still capture time in ms (default: 2000)")
+    parser.add_argument("--time-ms", type=int, default=3000,
+                        help="rpicam-still capture time in ms (default: 3000)")
     parser.add_argument("--autofocus", action="store_true",
                         help="Enable autofocus")
     parser.add_argument("--af-mode", type=str, default="continuous",
