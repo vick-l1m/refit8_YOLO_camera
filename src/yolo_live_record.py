@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import cv2
+from numpy.ma import size
 from ultralytics import YOLO
 
 from yolo_helpers import (
@@ -19,6 +20,7 @@ from yolo_helpers import (
     ClassStats,
 )
 
+from Arducam_ws.camera_focus import enable_autofocus, AutofocusConfig
 
 # ----------------------------
 # Camera abstraction
@@ -50,30 +52,8 @@ class Picamera2Camera(BaseCamera):
         self.picam2.start()
         time.sleep(0.2)
 
-    def enable_autofocus(self, mode: int = 2) -> bool:
-        try:
-            controls = self.picam2.camera_controls
-            print("Camera controls available:", list(controls.keys()))
-            if "AfMode" not in controls:
-                print("No AfMode control found; autofocus may not be exposed by this driver.")
-                return False
-            try:
-                self.picam2.set_controls({"AfMode": int(mode)})
-                print(f"Autofocus enabled: AfMode={mode}")
-                return True
-            except Exception as e:
-                print(f"AfMode={mode} failed:", e)
-                if int(mode) != 1:
-                    try:
-                        self.picam2.set_controls({"AfMode": 1})
-                        print("Autofocus enabled: AfMode=1 (fallback)")
-                        return True
-                    except Exception as e2:
-                        print("AfMode=1 fallback failed:", e2)
-                return False
-        except Exception as e:
-            print("Autofocus error:", e)
-            return False
+        # Enable autofocus automatically (best effort)
+        enable_autofocus(self.picam2, AutofocusConfig(enabled=self.autofocus, mode=self.af_mode))
 
     def read(self):
         return self.picam2.capture_array()
@@ -109,7 +89,7 @@ class OpenCVCamera(BaseCamera):
 def make_camera(backend: str, *, camera_num: int, device: str, size: tuple) -> BaseCamera:
     backend = backend.lower()
     if backend in ("picam2", "picamera2", "libcamera"):
-        return Picamera2Camera(camera_num=camera_num, size=size)
+        return Picamera2Camera(camera_num=camera_num, size=size, autofocus=True, af_mode=2)    
     if backend in ("opencv", "v4l2", "usb"):
         dev = device
         if isinstance(dev, str) and dev.isdigit():
@@ -175,7 +155,7 @@ def parse_args() -> AppConfig:
     p.add_argument("--infer-interval", type=float, default=0.5, help="Seconds between YOLO inferences (default 0.5)")
 
     # Autofocus (Picamera2)
-    p.add_argument("--autofocus", action="store_true")
+    p.add_argument("--autofocus", action="store_true", default=True)
     p.add_argument("--af-mode", type=int, default=2)
 
     a = p.parse_args()

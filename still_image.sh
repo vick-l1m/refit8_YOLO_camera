@@ -9,6 +9,8 @@ OUTDIR="$HOME/captures/photos"
 DISPLAY=1          # 1 = show with feh, 0 = don't
 PREVIEW=0          # 0 = use -n (no preview), 1 = allow preview window
 TIME_MS=300        # rpicam-still capture time (ms)
+AUTOFOCUS=1          # 1 = enable autofocus (default on)
+AF_MODE="continuous" # auto | continuous | manual (default: continuous)
 
 usage() {
   cat <<EOF
@@ -23,6 +25,9 @@ Options:
       --no-display        Do not display after capture
       --preview           Enable preview window (omit -n)
       --no-preview        Disable preview window (-n) (default)
+      --autofocus         Enable autofocus (default)
+      --no-autofocus      Disable autofocus
+      --af-mode <mode>    Autofocus mode: auto | continuous | manual
   -t, --time <ms>         Capture time in ms (default: $TIME_MS)
   -h, --help              Show help
 
@@ -44,6 +49,9 @@ while [[ $# -gt 0 ]]; do
     --no-display) DISPLAY=0; shift ;;
     --preview) PREVIEW=1; shift ;;
     --no-preview) PREVIEW=0; shift ;;
+    --autofocus) AUTOFOCUS=1; shift ;;
+    --no-autofocus) AUTOFOCUS=0; shift ;;
+    --af-mode) AF_MODE="$2"; shift 2 ;;
     -t|--time) TIME_MS="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1"; usage; exit 1 ;;
@@ -64,8 +72,13 @@ if [[ "$PREVIEW" -eq 0 ]]; then
   PREVIEW_FLAG="-n"
 fi
 
+AF_FLAG=""
+if [[ "$AUTOFOCUS" -eq 1 ]]; then
+  AF_FLAG="--autofocus-mode $AF_MODE"
+fi
+
 echo "Saving still to: $OUT"
-rpicam-still $PREVIEW_FLAG -t "$TIME_MS" -o "$OUT" --width "$WIDTH" --height "$HEIGHT"
+rpicam-still $PREVIEW_FLAG $AF_FLAG -t "$TIME_MS" -o "$OUT" --width "$WIDTH" --height "$HEIGHT"
 
 if [[ "$DISPLAY" -eq 1 ]]; then
   feh -F "$OUT"

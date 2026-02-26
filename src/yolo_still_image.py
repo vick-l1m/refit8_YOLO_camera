@@ -8,13 +8,23 @@ from pathlib import Path
 import cv2
 from ultralytics import YOLO
 
+from Arducam_ws.camera_focus import rpicam_autofocus_args
+
 
 def ensure_dirs(images_dir: Path, data_dir: Path) -> None:
     images_dir.mkdir(parents=True, exist_ok=True)
     data_dir.mkdir(parents=True, exist_ok=True)
 
 
-def capture_still_rpicam(out_path: Path, width: int, height: int, time_ms: int, preview: bool) -> None:
+def capture_still_rpicam(
+    out_path: Path,
+    width: int,
+    height: int,
+    time_ms: int,
+    preview: bool,
+    autofocus: bool,
+    af_mode: str,
+) -> None:
     """
     Capture a still image using rpicam-still.
     If preview=False -> uses -n (no preview window).
@@ -26,6 +36,10 @@ def capture_still_rpicam(out_path: Path, width: int, height: int, time_ms: int, 
         "--width", str(width),
         "--height", str(height),
     ]
+
+    if autofocus:
+        cmd += rpicam_autofocus_args(enabled=True, mode=af_mode)
+
     if not preview:
         cmd.insert(1, "-n")  # disable preview
 
@@ -106,6 +120,12 @@ def main():
     p.add_argument("--imgsz", type=int, default=320, help="YOLO inference size (default: 320)")
     p.add_argument("--conf", type=float, default=0.25, help="YOLO confidence threshold (default: 0.25)")
 
+    # autofocus params
+    p.add_argument("--autofocus", action="store_true", help="Enable autofocus (rpicam-still)")
+    p.add_argument("--af-mode", type=str, default="continuous",
+               choices=["auto", "continuous", "manual"],
+               help="Autofocus mode for rpicam-still (default: continuous)")
+
     args = p.parse_args()
 
     # Output folders (as requested)
@@ -128,6 +148,8 @@ def main():
         height=args.height,
         time_ms=args.time_ms,
         preview=(not args.no_preview),
+        autofocus=args.autofocus,
+        af_mode=args.af_mode,
     )
 
     # 2) run YOLO on captured image

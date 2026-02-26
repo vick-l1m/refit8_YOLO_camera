@@ -102,7 +102,7 @@ xdg-open /captures/photos/your_image.jpg
 
 # Videos
 ls -lh /captures/videos
-mpv /captures/videos/your_video.mp4
+xdg-open /captures/videos/your_video.mp4
 ```
 
 ## Capturing YOLO Data
@@ -122,12 +122,16 @@ This will output the data to:
 - Json data
 ```/captures/yolo/images/data/<NAME>.json``` 
 
+View the image with
+```bash
+xdg-open /captures/yolo/photos/your_image.jpg
+```
 
 **Videos**
 To capture live YOLO data and then save it as a recording
 ```bash
 # Run
-./run_live_yolo_log.sh
+./run_live_yolo_record.sh
 
 # Example: video of hallway for 20s and play it back after
 ./run_live_yolo_record.sh --name hallway --play --time 20000
@@ -146,6 +150,11 @@ This will output the data to:
 
 - JSON log - contains a list of all objects, their instance count and confidence level:
 ```/captures/yolo/videos/data/<NAME>/events.json```
+
+View the video with
+```bash
+xdg-open /captures/yolo/photos/your_image.jpg
+```
 
 ## Changing the YOLO Model or Camera Module
 Inside of each startup script, you can change the parameters 

@@ -10,6 +10,8 @@ NAME=""             # if empty -> auto timestamp
 OUTDIR="$HOME/captures/videos"
 PLAY=0              # 1 = play after recording, 0 = don't
 PREVIEW=1           # 1 = show preview while recording, 0 = disable preview (-n)
+AUTOFOCUS=1          # 1 = enable autofocus (default on)
+AF_MODE="continuous" # auto | continuous | manual (default: continuous)
 
 usage() {
   cat <<EOF
@@ -26,6 +28,9 @@ Options:
       --no-play           Don't play after recording (default)
       --preview           Show preview while recording (default)
       --no-preview        Disable preview (-n)
+      --autofocus         Enable autofocus (default)
+      --no-autofocus      Disable autofocus
+      --af-mode <mode>    Autofocus mode: auto | continuous | manual
   -h, --help              Show help
 
 Examples:
@@ -48,6 +53,9 @@ while [[ $# -gt 0 ]]; do
     --no-play) PLAY=0; shift ;;
     --preview) PREVIEW=1; shift ;;
     --no-preview) PREVIEW=0; shift ;;
+    --autofocus) AUTOFOCUS=1; shift ;;
+    --no-autofocus) AUTOFOCUS=0; shift ;;
+    --af-mode) AF_MODE="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1"; usage; exit 1 ;;
   esac
@@ -66,8 +74,13 @@ if [[ "$PREVIEW" -eq 0 ]]; then
   PREVIEW_FLAG="-n"
 fi
 
+AF_FLAG=""
+if [[ "$AUTOFOCUS" -eq 1 ]]; then
+  AF_FLAG="--autofocus-mode $AF_MODE"
+fi
+
 echo "Saving video to: $OUT"
-rpicam-vid $PREVIEW_FLAG -t "$TIME_MS" -o "$OUT" --width "$WIDTH" --height "$HEIGHT" --framerate "$FPS"
+rpicam-vid $PREVIEW_FLAG $AF_FLAG -t "$TIME_MS" -o "$OUT" --width "$WIDTH" --height "$HEIGHT" --framerate "$FPS"
 
 if [[ "$PLAY" -eq 1 ]]; then
   mpv --fs "$OUT"
