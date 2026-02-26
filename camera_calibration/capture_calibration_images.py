@@ -62,12 +62,11 @@ def main():
             width=args.width,
             height=args.height,
             time_ms=args.time_ms,
-            preview=False,  # we show preview manually via OpenCV
+            preview=True,
             autofocus=args.autofocus,
             af_mode=args.af_mode,
         ),
     )
-
     cam = CameraCapture(cap_cfg)
 
     counter = 1
