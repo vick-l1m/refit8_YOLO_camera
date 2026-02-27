@@ -20,7 +20,7 @@ cd "$PROJECT_ROOT"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 # --- Path to the measurement module ---
-MEASURE_PY="${MEASURE_PY:-$PROJECT_ROOT/yolo_measure_3d.py}"
+MEASURE_PY="${MEASURE_PY:-$PROJECT_ROOT/src/yolo_measure_3d.py}"
 
 # -----------------------------------------------------------------------------
 # Required / important paths
@@ -31,12 +31,12 @@ MODEL_PATH="${MODEL_PATH:-$HOME/models/yolov8n.pt}"
 
 # Camera intrinsics file created by calibrate_camera.py
 # Must match your capture resolution (e.g., 1920x1080).
-INTRINSICS_PATH="${INTRINSICS_PATH:-$PROJECT_ROOT/intrinsics/intrinsics_1920x1080.json}"
+INTRINSICS_PATH="${INTRINSICS_PATH:-$PROJECT_ROOT/calibration/fake_intrinsics_1920x1080.json}"
 
 # Output folder. Script will create:
 #   $OUTDIR/images/*.png
 #   $OUTDIR/data/*.json
-OUTDIR="${OUTDIR:-$HOME/captures/yolo/measure_3d}"
+OUTDIR="${OUTDIR:-$PROJECT_ROOT/captures/yolo/measure_3d}"
 
 # Optional base filename (no extension). If empty, the python script uses timestamp.
 NAME="${NAME:-}"
@@ -60,7 +60,7 @@ AF_TRIGGER="${AF_TRIGGER:--1}"   # -1 disables, >=0 attempts a focus trigger
 # YOLO detection settings
 # -----------------------------------------------------------------------------
 
-CONF="${CONF:-0.25}"          # Confidence threshold
+CONF="${CONF:-0.1}"          # Confidence threshold
 IOU="${IOU:-0.45}"            # NMS IoU threshold
 CLASS_NAME="${CLASS_NAME:-chair}"  # "chair" or "any" to accept all detected classes
 MAX_DETECTIONS="${MAX_DETECTIONS:-5}"

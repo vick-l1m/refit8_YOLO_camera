@@ -235,6 +235,29 @@ def pixel_center_to_cam_xyz(u: float, v: float, Z: float, intr: Intrinsics) -> T
     Y = (v - intr.cy) * Z / intr.fy
     return float(X), float(Y), float(Z)
 
+# ----------------------------
+# Multiple passes + sharpness selection (optional, for better autofocus on PiCamera2)
+# ----------------------------
+
+def sharpness_score(rgb: np.ndarray) -> float:
+    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
+    return float(cv2.Laplacian(gray, cv2.CV_64F).var())
+
+
+def capture_best_of_n(cam: CameraCapture, n: int = 6, sleep_s: float = 0.05) -> np.ndarray:
+    """
+    Capture n frames and return the sharpest one (highest Laplacian variance).
+    Dropping the first frame often helps (AE/AWB settling).
+    """
+    frames: list[np.ndarray] = []
+    for _ in range(n):
+        frames.append(cam.capture_rgb())
+        time.sleep(sleep_s)
+
+    if len(frames) >= 2:
+        frames = frames[1:]  # drop first
+
+    return max(frames, key=sharpness_score)
 
 # ----------------------------
 # Main
@@ -249,7 +272,8 @@ def parse_args():
     p.add_argument("--width", type=int, default=1920)
     p.add_argument("--height", type=int, default=1080)
     p.add_argument("--device_index", type=int, default=0, help="OpenCV fallback camera index")
-
+    p.add_argument("--imgsz", type=int, default=320)
+    
     # Autofocus (Picamera2 best-effort)
     p.add_argument("--af_mode", type=int, default=2)
     p.add_argument("--af_trigger", type=int, default=-1, help="Set >=0 to use; -1 disables")
@@ -314,10 +338,10 @@ def main():
     model = YOLO(args.model)
 
     with CameraCapture(cap_cfg) as cam:
-        rgb = cam.capture_rgb()
+        rgb = capture_best_of_n(cam, n=6, sleep_s=0.05)
 
-    if args.undistort:
-        rgb = undistort_rgb(rgb, intr)
+    rgb_yolo = rgb
+    rgb_meas = undistort_rgb(rgb, intr) if args.undistort else rgb
 
     # Run YOLO
     results = model.predict(
@@ -325,7 +349,7 @@ def main():
         conf=args.conf,
         iou=args.iou,
         verbose=False,
-        imgsz=max(args.width, args.height)
+        imgsz=args.imgsz,
     )
     r = results[0]
 

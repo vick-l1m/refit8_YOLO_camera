@@ -9,14 +9,14 @@ Designing a camera moule that can identify basic objects found inside of an audi
 - Raspberry Pi ArduCam 64mp autofocus camera
 
 ## Setup and installation
-1. Raspberry Pi Downloads
+### 1. Raspberry Pi Downloads
 ```bash
 sudo apt update
 sudo apt install -y feh mpv python3-picamera2 python3-venv python3-pip
 sudo apt install -y rpicam-apps
 ```
 
-2. Setup the python environment for YOLO
+### 2. Setup the python environment for YOLO
 ```bash
 # Create a venv
 python3 -m venv --system-site-packages ~/yolo-venv
@@ -25,20 +25,16 @@ source ~/yolo-venv/bin/activate
 pip install --upgrade pip
 pip install ultralytics opencv-python
 
-pip install -r ~/refit8_YOLO_camera/requirements.txt
+pip install -r requirements.txt
 ```
 
-3. Download the YOLO Model
+### 3. Download the YOLO Model
 ```bash
-python3 ~/refit8_YOLO_camera/models/YOLO8n_pt_download.py
+cd models
+python3 YOLO8n_pt_download.py
 ```
 
-4. Create a folder for data storage
-```bash
-mkdir -p /captures/photos /captures/videos /captures/yolo/videos/data /captures/yolo/images/data /captures/yolo/measure_3d/images/data
-```
-
-5. Operating inside the .venv
+### 4. Operating inside the .venv
 Once created once, you can activate the environment again with:
 ```bash
 source ~/yolo-venv/bin/activate
@@ -55,7 +51,7 @@ which python
 python -c "import sys; print(sys.executable)"
 ```
 
-6. Make each script excecutable
+### 5. Make each script excecutable
 ```bash
 cd scripts
 chmod +x still_image.sh
@@ -68,17 +64,63 @@ chmod +x run_yolo_measure_3d.sh
 ```
 
 ## YOLO Measure Object in 3D
-1. Calibrate the camera: see camera_calibration workspace
-2. Run the script:
+Ensure you are in the .venv
+
+### 1. Calibrate the camera: 
+See camera_calibration workspace
+Ensure that the intrinsics file is being used by the startup script - or run it manually as shown below
+
+### 2. Run the script:
 ```bash
 # run with defaults 
-./camera_measurement/run_yolo_measure_3d.sh
+./run_yolo_measure_3d.sh
 
-# Example: custom measurements
-./camera_measurement/run_yolo_measure_3d.sh --distance_m 1.7 --angle_deg 55 --depth_ratio 0.85 --class_name any
+# Example with fake intrinsics and custom measurements
+./run_yolo_measure_3d.sh  --name chair_image --intrinsics calibration/fake_intrinsics_1920x1080.json --angle_deg 45 --depth_ratio 0.85 --class_name chair --preview
 ```
 
-## Capturing Raw Data
+The important parameters to change are:
+- ```--name```: name of the output file. Default - ```timestamp``` 
+- ```--intrinsics```: intrinsics file for the camera calibration. Default - ```captures/fake_intrinsices_1920x1080.json``` 
+- ```--angle_deg```: The angle that the photo is being taken relative to the object's front face (degrees). Default - ```45``` 
+- ```--depth ratio```: Estimated ratio between the width and depth - Default - ```1``` 
+- ```--distance```: The distance from the camera to the object (meters). Default - ```2.0``` 
+- --```class_name```: If you want to look specifically for an object type. Default - ```any```             
+
+### Accessing data
+This module will output to the folder:
+```bash
+refit8_YOLO_camera/captures/yolo/measure_3d/
+```
+
+- **Images** 
+```bash
+cd ~/refit8_YOLO_camera/captures/yolo/measure_3d/images
+
+# Open
+xdg-open <image_name>.jpeg
+```
+
+- **Data**
+It will output the recognised images, parameters used and measurements into a json file. Access them here using any text editing tool:
+```bash
+cd ~/refit8_YOLO_camera/captures/yolo/measure_3d/data/<image_name>.json
+```
+
+### Limitations
+- Reliance on YOLO
+The program relies on YOLO to identify what object it is looking at so that it can create the bounding box. If the object does not exist in this YOLO model, it won't be able to measure it
+
+- Depth calculation
+Currently, the depth is calculated using a depth ratio and the angle_deg. It is doing an estimation of the depth, rather than actually measuring it
+
+### Next steps
+- Correctly doing the camera calibration and producing a ```intrinsics.json``` file
+- Adding/finding a way to measure the distance from the object instead of using a constant distance
+- Editing/adjusting the object detection/YOLO model so that it can identify more objects
+- Adding a "known object" for calibration purposes to increase the accuracy
+
+## Capturing Raw Data (Raspberry Pi)
 
 **Still Image**
 ```bash
@@ -96,6 +138,9 @@ chmod +x run_yolo_measure_3d.sh
 
 # Example: record a video called "room 1" for 10s at 30fps and play after
 ./record_video.sh --name room_1 --fps 30 --time 1000 --play
+
+# Example: Live log no recording, run till press q
+./run_yolo_live_record.sh --no-record --time-ms 0
 
 # For a list of all commands
 ./record_video.sh -h
@@ -121,6 +166,7 @@ xdg-open /captures/videos/your_video.mp4
 ```
 
 ## Capturing YOLO Data
+These commands work with raspberry pi and usb/opencv devices (eg a webcam)
 
 **Images**
 To capture a still image with YOLO data
@@ -175,12 +221,7 @@ xdg-open /captures/yolo/photos/your_image.jpg
 Inside of each startup script, you can change the parameters 
 
 ### Camera
-```bash
---backend picam2
---camera-num 0
-``` 
-This will use a picam on the default available port. Changing to 1 will activate the 2nd port
-There is also support built in for a usb-connected camera which will run with opencv - see the startup script
+The camera is automatically detected and defaults to raspberry pi. It falls back to an opencv/usb camera if a raspberry pi camera is not detected.
 
 **List cameras**
 - Raspberry Pi connections - use ```Picamera2```

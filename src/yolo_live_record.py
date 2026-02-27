@@ -1,10 +1,31 @@
 #!/usr/bin/env python3
+"""
+yolo_live_record.py
+
+Record video (optional) + run YOLO at fixed intervals.
+When new object classes appear, save an annotated snapshot and update events.json.
+
+Camera I/O uses shared helpers from camera_capture.py:
+- CameraCapture
+- CaptureConfig
+- RPICamStillConfig
+
+Backends:
+- auto (picamera2 if available, else opencv)
+- picamera2
+- opencv
+- rpicam-still (works but not ideal for high-FPS video)
+"""
+
+from __future__ import annotations
+
 import argparse
 import subprocess
 import time
 import threading
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 import cv2
 from ultralytics import YOLO
@@ -19,85 +40,7 @@ from yolo_helpers import (
     ClassStats,
 )
 
-from Arducam_ws.camera_focus import enable_autofocus, AutofocusConfig
-
-# ----------------------------
-# Camera abstraction
-# ----------------------------
-
-class BaseCamera:
-    def start(self):
-        raise NotImplementedError
-
-    def read(self):
-        """Return an RGB frame (H, W, 3) uint8."""
-        raise NotImplementedError
-
-    def stop(self):
-        raise NotImplementedError
-
-
-class Picamera2Camera(BaseCamera):
-    def __init__(self, camera_num=0, size=(1280, 720), autofocus: bool = True, af_mode: int = 2):
-        from picamera2 import Picamera2
-        self.camera_num = camera_num
-        self.size = size
-        self.autofocus = autofocus
-        self.af_mode = af_mode
-        self.picam2 = Picamera2(camera_num=camera_num)
-
-    def start(self):
-        self.picam2.configure(
-            self.picam2.create_preview_configuration(main={"format": "RGB888", "size": self.size})
-        )
-        self.picam2.start()
-        time.sleep(0.2)
-
-        # Enable autofocus automatically (best effort)
-        enable_autofocus(self.picam2, AutofocusConfig(enabled=self.autofocus, mode=self.af_mode))
-
-    def read(self):
-        return self.picam2.capture_array()
-
-    def stop(self):
-        self.picam2.stop()
-
-
-class OpenCVCamera(BaseCamera):
-    def __init__(self, device=0, size=(1280, 720)):
-        self.device = device
-        self.size = size
-        self.cap = None
-
-    def start(self):
-        self.cap = cv2.VideoCapture(self.device)
-        if not self.cap.isOpened():
-            raise RuntimeError(f"Failed to open camera device {self.device}")
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.size[0])
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.size[1])
-
-    def read(self):
-        ok, frame_bgr = self.cap.read()
-        if not ok or frame_bgr is None:
-            raise RuntimeError("Failed to read frame from OpenCV camera")
-        return cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-
-    def stop(self):
-        if self.cap:
-            self.cap.release()
-
-
-def make_camera(backend: str, *, camera_num: int, device: str, size: tuple,
-                autofocus: bool, af_mode: int) -> BaseCamera:
-    backend = backend.lower()
-    if backend in ("picam2", "picamera2", "libcamera"):
-        return Picamera2Camera(camera_num=camera_num, size=size, autofocus=autofocus, af_mode=af_mode)  
-    if backend in ("opencv", "v4l2", "usb"):
-        dev = device
-        if isinstance(dev, str) and dev.isdigit():
-            dev = int(dev)
-        return OpenCVCamera(device=dev, size=size)
-    raise ValueError(f"Unknown camera backend: {backend}")
+from camera_capture import CameraCapture, CaptureConfig, RPICamStillConfig
 
 
 # ----------------------------
@@ -106,19 +49,35 @@ def make_camera(backend: str, *, camera_num: int, device: str, size: tuple,
 
 @dataclass
 class AppConfig:
-    # Record options (match record_videos.sh)
+    # Capture / run
     width: int
     height: int
     fps: int
     time_ms: int
     name: str
+
+    # Output paths (inside repo captures/)
+    outdir: Path
+
+    # UI / behavior
     play: bool
     preview: bool
+    record: bool  # ✅ video writing optional
 
     # Camera backend selection
-    backend: str
-    camera_num: int
-    device: str
+    backend: str              # auto | picamera2 | opencv | rpicam-still
+    device_index: int         # OpenCV device index
+    warmup_s: float
+
+    # Picamera2 autofocus
+    af_mode: int
+    af_trigger: int
+
+    # rpicam-still options (only used if backend=rpicam-still)
+    rpicam_time_ms: int
+    rpicam_preview: bool
+    rpicam_autofocus: bool
+    rpicam_af_mode: str
 
     # YOLO
     model: str
@@ -126,39 +85,71 @@ class AppConfig:
     conf: float
     infer_interval_s: float
 
-    # Autofocus (Picamera2 only)
-    autofocus: bool
-    af_mode: int
 
-
-def parse_args() -> AppConfig:
+def parse_args(project_root: Path) -> AppConfig:
     p = argparse.ArgumentParser(
-        description="Record video with cv2.VideoWriter + YOLO snapshots when new object classes appear."
+        description="YOLO live preview + optional video recording + snapshots on new object classes."
     )
 
-    # Record options (same spirit as record_videos.sh)
+    # Record options (match your bash script style)
     p.add_argument("--width", type=int, default=1280)
     p.add_argument("--height", type=int, default=720)
     p.add_argument("--fps", type=int, default=30)
-    p.add_argument("--time-ms", type=int, default=10000, help="Duration in ms (default 10000). Use 0 to run until 'q'.")
+    p.add_argument(
+        "--time-ms",
+        type=int,
+        default=10000,
+        help="Duration in ms. Use 0 to run until 'q'. (Default: 10000)",
+    )
     p.add_argument("--name", type=str, default="", help="Base filename (no extension). Default: timestamp")
-    p.add_argument("--play", action="store_true", help="Play video fullscreen after recording (mpv)")
-    p.add_argument("--no-preview", action="store_true", help="Disable preview window (no cv2.imshow)")
 
-    # Camera selection
-    p.add_argument("--backend", type=str, default="picam2", choices=["picam2", "opencv"])
-    p.add_argument("--camera-num", type=int, default=0)
-    p.add_argument("--device", type=str, default="0")
+    # Output base directory inside repo
+    p.add_argument(
+        "--outdir",
+        type=str,
+        default=str(project_root / "captures"),
+        help="Base captures directory (default: <repo>/captures)",
+    )
+
+    # Optional behaviors
+    p.add_argument("--play", action="store_true", help="Play recorded video fullscreen after recording (mpv)")
+    p.add_argument("--no-preview", action="store_true", help="Disable preview window (no cv2.imshow)")
+    p.add_argument(
+        "--no-record",
+        action="store_true",
+        help="Preview + YOLO + snapshots, but do not write a video file.",
+    )
+
+    # Camera selection (camera_capture.py)
+    p.add_argument(
+        "--backend",
+        type=str,
+        default="auto",
+        choices=["auto", "picamera2", "opencv", "rpicam-still"],
+        help="Camera backend selection",
+    )
+    p.add_argument("--device-index", type=int, default=0, help="OpenCV camera device index")
+    p.add_argument("--warmup-s", type=float, default=0.2, help="Warmup sleep after camera start")
+
+    # Picamera2 autofocus
+    p.add_argument("--af-mode", type=int, default=2)
+    p.add_argument("--af-trigger", type=int, default=-1, help="-1 disables; >=0 attempts AfTrigger")
+
+    # rpicam-still options (only used if backend=rpicam-still)
+    p.add_argument("--rpicam-time-ms", type=int, default=3000)
+    p.add_argument(
+        "--rpicam-preview",
+        action="store_true",
+        help="Let rpicam-still show its own preview window (usually off).",
+    )
+    p.add_argument("--no-rpicam-autofocus", action="store_true")
+    p.add_argument("--rpicam-af-mode", type=str, default="continuous", choices=["auto", "continuous", "manual"])
 
     # YOLO
     p.add_argument("--model", type=str, default=str(Path.home() / "models" / "yolov8n.pt"))
     p.add_argument("--imgsz", type=int, default=320)
     p.add_argument("--conf", type=float, default=0.25)
     p.add_argument("--infer-interval", type=float, default=0.5, help="Seconds between YOLO inferences (default 0.5)")
-
-    # Autofocus (Picamera2)
-    p.add_argument("--no-autofocus", action="store_true", help="Disable autofocus (default: enabled)")
-    p.add_argument("--af-mode", type=int, default=2)
 
     a = p.parse_args()
 
@@ -167,18 +158,24 @@ def parse_args() -> AppConfig:
         height=a.height,
         fps=a.fps,
         time_ms=a.time_ms,
-        name=a.name,
+        name=a.name.strip(),
+        outdir=Path(a.outdir),
         play=a.play,
         preview=(not a.no_preview),
+        record=(not a.no_record),
         backend=a.backend,
-        camera_num=a.camera_num,
-        device=a.device,
+        device_index=a.device_index,
+        warmup_s=a.warmup_s,
+        af_mode=a.af_mode,
+        af_trigger=a.af_trigger,
+        rpicam_time_ms=a.rpicam_time_ms,
+        rpicam_preview=a.rpicam_preview,
+        rpicam_autofocus=(not a.no_rpicam_autofocus),
+        rpicam_af_mode=a.rpicam_af_mode,
         model=a.model,
         imgsz=a.imgsz,
         conf=a.conf,
         infer_interval_s=a.infer_interval,
-        autofocus=(not a.no_autofocus),
-        af_mode=a.af_mode,
     )
 
 
@@ -187,15 +184,16 @@ def parse_args() -> AppConfig:
 # ----------------------------
 
 def main():
-    cfg = parse_args()
+    project_root = Path(__file__).resolve().parents[1]
+    cfg = parse_args(project_root)
 
     # Output locations
-    project_root = Path(__file__).resolve().parents[1]
-    base_captures = project_root / "captures"
+    base_captures = cfg.outdir
     video_outdir = base_captures / "yolo" / "videos"
     ensure_dir(video_outdir)
 
-    if not cfg.name.strip():
+    # Default name
+    if not cfg.name:
         cfg.name = f"yolo_video_{now_ts()}"
 
     video_path = video_outdir / f"{cfg.name}.mp4"
@@ -211,23 +209,33 @@ def main():
         raise FileNotFoundError(f"YOLO model not found: {model_path}")
     yolo = YOLO(str(model_path))
 
-    # Init camera
-    cam = make_camera(
-        cfg.backend,
-        camera_num=cfg.camera_num,
-        device=cfg.device,
-        size=(cfg.width, cfg.height),
-        autofocus=cfg.autofocus,
-        af_mode=cfg.af_mode,
+    # Build capture config (shared)
+    af_trigger: Optional[int] = None if cfg.af_trigger < 0 else int(cfg.af_trigger)
+    cap_cfg = CaptureConfig(
+        backend=cfg.backend,
+        width=cfg.width,
+        height=cfg.height,
+        warmup_s=cfg.warmup_s,
+        device_index=cfg.device_index,
+        af_mode=int(cfg.af_mode),
+        af_trigger=af_trigger,
+        rpicam=RPICamStillConfig(
+            width=cfg.width,
+            height=cfg.height,
+            time_ms=cfg.rpicam_time_ms,
+            preview=cfg.rpicam_preview,
+            autofocus=cfg.rpicam_autofocus,
+            af_mode=cfg.rpicam_af_mode,
+        ),
     )
-    cam.start()
 
-    # Video writer (mp4)
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(str(video_path), fourcc, float(cfg.fps), (cfg.width, cfg.height))
-    if not writer.isOpened():
-        cam.stop()
-        raise RuntimeError("Failed to open cv2.VideoWriter. Try another codec/container if needed.")
+    # Optional video writer
+    writer = None
+    if cfg.record:
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        writer = cv2.VideoWriter(str(video_path), fourcc, float(cfg.fps), (cfg.width, cfg.height))
+        if not writer.isOpened():
+            raise RuntimeError("Failed to open cv2.VideoWriter. Try another codec/container if needed.")
 
     # Shared state for inference thread
     latest_annotated_bgr = None
@@ -249,7 +257,7 @@ def main():
             annotated_bgr = r0.plot()  # typically BGR
             summary = summarize_detections(r0)
 
-            # Update global stats every inference
+            # Update global stats
             update_global_stats(global_stats, summary["detections"])
 
             # Check for new labels
@@ -257,18 +265,13 @@ def main():
             new_labels = sorted([lab for lab in labels_now if lab not in seen_labels])
 
             if new_labels:
-                # Save one snapshot for this inference when *any* new label appears
-                # (includes all detections/boxes in the frame)
                 stamp = time.strftime("%Y%m%d_%H%M%S", time.localtime(infer_time))
-                # Make filename readable; include first new label
                 primary = new_labels[0].replace(" ", "_")
                 snap_name = f"{stamp}_{primary}.jpg"
                 snap_path = snapshots_dir / snap_name
                 cv2.imwrite(str(snap_path), annotated_bgr)
 
-                # Record events for each new label
                 for lab in new_labels:
-                    # Pull confidences for that label in this inference
                     confs = [float(d["confidence"]) for d in summary["detections"] if d["label"] == lab]
                     event = {
                         "time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(infer_time)),
@@ -281,11 +284,11 @@ def main():
                     events.append(event)
                     seen_labels.add(lab)
 
-                # Update JSON file on each trigger
+                # Update JSON on each trigger
                 write_events_json(
                     events_json_path,
-                    video_path=video_path,
-                    snapshots_dir=snapshots_dir,
+                    video_path=str(video_path) if writer is not None else "",
+                    snapshots_dir=str(snapshots_dir),
                     yolo_model=str(model_path),
                     imgsz=cfg.imgsz,
                     conf_threshold=cfg.conf,
@@ -297,7 +300,7 @@ def main():
                     events=events,
                 )
 
-            # Always update latest annotated for preview + recording overlay
+            # Update latest annotated frame
             with latest_lock:
                 latest_annotated_bgr = annotated_bgr
 
@@ -308,59 +311,66 @@ def main():
 
     # Timing
     start_t = time.time()
-    end_t = (start_t + (cfg.time_ms / 1000.0)) if cfg.time_ms > 0 else None
+    end_t = None
+    if cfg.time_ms > 0:
+        end_t = start_t + (cfg.time_ms / 1000.0)
 
-    print(f"Recording -> {video_path}")
+    if writer is not None:
+        print(f"Recording -> {video_path}")
+    else:
+        print("No-record mode: preview/snapshots only (video will NOT be saved).")
+
     print(f"Snapshots -> {snapshots_dir}")
     print("Press 'q' to stop early.")
 
     try:
-        while True:
-            now = time.time()
-            if end_t is not None and now >= end_t:
-                break
-
-            frame_rgb = cam.read()
-
-            # Kick off inference periodically (non-blocking)
-            if (now - last_infer_t >= cfg.infer_interval_s) and not inference_busy:
-                inference_busy = True
-                last_infer_t = now
-                threading.Thread(
-                    target=run_inference,
-                    args=(frame_rgb.copy(), now),
-                    daemon=True
-                ).start()
-
-            # Choose frame for writing: use annotated if available else raw
-            frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-            with latest_lock:
-                display_bgr = latest_annotated_bgr if latest_annotated_bgr is not None else frame_bgr
-
-            # Ensure correct size (just in case)
-            if display_bgr.shape[1] != cfg.width or display_bgr.shape[0] != cfg.height:
-                display_bgr = cv2.resize(display_bgr, (cfg.width, cfg.height), interpolation=cv2.INTER_LINEAR)
-
-            # Write to video
-            writer.write(display_bgr)
-
-            # Preview window (maps to PREVIEW=1)
-            if cfg.preview:
-                cv2.imshow("YOLO Record (q to quit)", display_bgr)
-                if (cv2.waitKey(1) & 0xFF) == ord("q"):
+        with CameraCapture(cap_cfg) as cam:
+            while True:
+                now = time.time()
+                if end_t is not None and now >= end_t:
                     break
 
+                frame_rgb = cam.capture_rgb()
+
+                # Kick off inference periodically (non-blocking)
+                if (now - last_infer_t >= cfg.infer_interval_s) and not inference_busy:
+                    inference_busy = True
+                    last_infer_t = now
+                    threading.Thread(
+                        target=run_inference,
+                        args=(frame_rgb.copy(), now),
+                        daemon=True
+                    ).start()
+
+                frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+                with latest_lock:
+                    display_bgr = latest_annotated_bgr if latest_annotated_bgr is not None else frame_bgr
+
+                # Ensure correct size
+                if display_bgr.shape[1] != cfg.width or display_bgr.shape[0] != cfg.height:
+                    display_bgr = cv2.resize(display_bgr, (cfg.width, cfg.height), interpolation=cv2.INTER_LINEAR)
+
+                # Write to video (optional)
+                if writer is not None:
+                    writer.write(display_bgr)
+
+                # Preview window
+                if cfg.preview:
+                    cv2.imshow("YOLO Live (q to quit)", display_bgr)
+                    if (cv2.waitKey(1) & 0xFF) == ord("q"):
+                        break
+
     finally:
-        writer.release()
+        if writer is not None:
+            writer.release()
         if cfg.preview:
             cv2.destroyAllWindows()
-        cam.stop()
 
-        # Write final JSON (even if no new objects ever appeared)
+        # Always write final JSON (even if no new objects ever appeared)
         write_events_json(
             events_json_path,
-            video_path=video_path,
-            snapshots_dir=snapshots_dir,
+            video_path=str(video_path) if writer is not None else "",
+            snapshots_dir=str(snapshots_dir),
             yolo_model=str(model_path),
             imgsz=cfg.imgsz,
             conf_threshold=cfg.conf,
@@ -369,11 +379,11 @@ def main():
             fps=cfg.fps,
             infer_interval_s=cfg.infer_interval_s,
             objects=stats_to_objects(global_stats),
-            events=events,
+            events=stats_to_objects(global_stats) and events or events,
         )
 
-    # Optional playback (maps to PLAY=1)
-    if cfg.play:
+    # Optional playback (only if we recorded)
+    if cfg.play and (writer is not None):
         subprocess.run(["mpv", "--fs", str(video_path)], check=False)
 
 
