@@ -301,6 +301,10 @@ def parse_args():
     p.add_argument("--outdir", default=str(Path.home() / "captures" / "yolo" / "measure_3d"))
     p.add_argument("--name", default="", help="Base name (no extension). If empty -> timestamp.")
     p.add_argument("--preview", action="store_true", help="Show a preview window")
+
+    # Input image
+    p.add_argument("--image", default=None, help="Path to input image. If set, skips camera capture.")
+
     return p.parse_args()
 
 
@@ -337,8 +341,21 @@ def main():
 
     model = YOLO(args.model)
 
-    with CameraCapture(cap_cfg) as cam:
-        rgb = capture_best_of_n(cam, n=6, sleep_s=0.05)
+    if args.image:
+        img_path = Path(args.image)
+        if not img_path.exists():
+            raise FileNotFoundError(f"--image not found: {img_path}")
+
+        bgr = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
+        if bgr is None:
+            raise RuntimeError(f"Failed to read image: {img_path}")
+
+        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+    else:
+        af_trigger = None if args.af_trigger < 0 else int(args.af_trigger)
+        cap_cfg = CaptureConfig(...)
+        with CameraCapture(cap_cfg) as cam:
+            rgb = cam.capture_rgb()
 
     rgb_yolo = rgb
     rgb_meas = undistort_rgb(rgb, intr) if args.undistort else rgb
@@ -349,7 +366,7 @@ def main():
         conf=args.conf,
         iou=args.iou,
         verbose=False,
-        imgsz=args.imgsz,
+        imgsz = max(rgb.shape[0], rgb.shape[1])
     )
     r = results[0]
 
@@ -377,7 +394,8 @@ def main():
             "intrinsics": str(Path(args.intrinsics)),
             "angle_deg": args.angle_deg,
             "depth_ratio": args.depth_ratio,
-            "detections": []
+            "detections": [],
+            "input_image": str(args.image) if args.image else None
         }
         js_path.write_text(json.dumps(payload, indent=2))
         print(f"No detections. Saved: {img_path} and {js_path}")
