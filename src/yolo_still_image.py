@@ -106,7 +106,7 @@ def main():
     args = p.parse_args()
 
     # Output folders
-    project_root = Path(__file__).resolve().parents[1]
+    project_root = Path.cwd()
     base_captures = project_root / "captures"
     images_dir = base_captures / "yolo" / "images"
     data_dir = images_dir / "data"

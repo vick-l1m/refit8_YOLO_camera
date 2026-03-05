@@ -281,7 +281,7 @@ def parse_args():
     # YOLO
     p.add_argument("--conf", type=float, default=0.25)
     p.add_argument("--iou", type=float, default=0.45)
-    p.add_argument("--class_name", default="chair", help="Target class label (e.g., chair). Use 'any' for all.")
+    p.add_argument("--class_name", default="any", help="Target class label (e.g., chair). Use 'any' for all.")
     p.add_argument("--max_detections", type=int, default=5)
 
     # Distance input
@@ -317,27 +317,40 @@ def main():
     dist_provider = build_distance_provider(args.distance_source, args.distance_m, args.distance_file)
 
     # Output dirs
-    outdir = Path(args.outdir)
-    img_dir = outdir / "images"
-    js_dir = outdir / "data"
+    project_root = Path.cwd()
+    base_captures = project_root / "captures" / "yolo" / "measure_3d"
+    img_dir = base_captures / "images"
+    js_dir = base_captures / "data"
+    base_captures.mkdir(parents=True, exist_ok=True)
     img_dir.mkdir(parents=True, exist_ok=True)
     js_dir.mkdir(parents=True, exist_ok=True)
 
     # Name
     if args.name.strip():
         base = args.name.strip()
+    elif args.image:
+        # use input image name + suffix
+        base = f"{Path(args.image).stem}_measured"
     else:
         base = time.strftime("%Y%m%d_%H%M%S")
 
     # Capture config
     af_trigger = None if args.af_trigger < 0 else int(args.af_trigger)
     cap_cfg = CaptureConfig(
+        backend="rpicam-still",
         width=args.width,
         height=args.height,
         device_index=args.device_index,
-        af_mode=int(args.af_mode) if args.af_mode is not None else None,
-        af_trigger=af_trigger,
     )
+    
+    
+    cap_cfg.rpicam.width = args.width
+    cap_cfg.rpicam.height = args.height
+    cap_cfg.rpicam.time_ms = 2000
+    cap_cfg.rpicam.preview = False
+    cap_cfg.rpicam.autofocus = True
+    cap_cfg.rpicam.af_mode = "continuous"
+
 
     model = YOLO(args.model)
 
@@ -355,10 +368,13 @@ def main():
         af_trigger = None if args.af_trigger < 0 else int(args.af_trigger)
         cap_cfg = CaptureConfig(...)
         with CameraCapture(cap_cfg) as cam:
-            rgb = cam.capture_rgb()
+            time.sleep(0.2)
+            rgb = cam.capture_best_of_n(cam, n=6, sleep_s=0.08)
 
     rgb_yolo = rgb
-    rgb_meas = undistort_rgb(rgb, intr) if args.undistort else rgb
+    rgb_meas = undistort_rgb(rgb, intr) 
+    if args.undistort:
+        rgb = undistort_rgb(rgb, intr)
 
     # Run YOLO
     results = model.predict(
@@ -383,7 +399,7 @@ def main():
     # Extract boxes
     if r.boxes is None or len(r.boxes) == 0:
         # Save empty output
-        img_path = img_dir / f"{base}_3dbox.png"
+        img_path = img_dir / f"{base}.png"
         js_path = js_dir / f"{base}.json"
         cv2.imwrite(str(img_path), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
 

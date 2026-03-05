@@ -184,7 +184,7 @@ def parse_args(project_root: Path) -> AppConfig:
 # ----------------------------
 
 def main():
-    project_root = Path(__file__).resolve().parents[1]
+    project_root = Path.cwd()
     cfg = parse_args(project_root)
 
     # Output locations

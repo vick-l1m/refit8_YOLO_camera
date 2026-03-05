@@ -77,6 +77,10 @@ Ensure that the intrinsics file is being used by the startup script - or run it 
 
 # Example with fake intrinsics and custom measurements
 ./run_yolo_measure_3d.sh  --name chair_image --intrinsics calibration/fake_intrinsics_1920x1080.json --angle_deg 45 --depth_ratio 0.85 --class_name chair --preview
+
+# Example with an existing image
+./run_yolo_measure_3d.sh --image ~/refit8_yolo__camera/captures/images/<image_name>.jpg --intrinsics calibration/fake_intrinsics_1920x1080.json
+
 ```
 
 The important parameters to change are:

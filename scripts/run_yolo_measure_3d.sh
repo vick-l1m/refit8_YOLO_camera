@@ -6,7 +6,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 PYTHON_BIN="${PYTHON_BIN:-python3}"
-MEASURE_PY="${MEASURE_PY:-$PROJECT_ROOT/yolo_measure_3d.py}"
+MEASURE_PY="${MEASURE_PY:-$PROJECT_ROOT/src/yolo_measure_3d.py}"
 
 # -----------------------------------------------------------------------------
 # Required / important paths
