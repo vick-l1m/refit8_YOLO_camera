@@ -24,6 +24,7 @@ python3 -m venv --system-site-packages ~/yolo-venv
 source ~/yolo-venv/bin/activate
 pip install --upgrade pip
 pip install ultralytics opencv-python
+pip install pupil-apriltags
 
 pip install -r requirements.txt
 ```

@@ -79,7 +79,52 @@ def build_distance_provider(distance_source: str, distance_m: float, distance_fi
 
     raise ValueError(f"Unsupported distance_source: {distance_source}")
 
+# ----------------------------
+# Apriltag-basted distance measurements
+# ----------------------------
+def apriltag_distance_z_m(rgb: np.ndarray, intr: Intrinsics, tag_size_m: float,
+                          families: str = "tag36h11") -> Optional[dict]:
+    """
+    Returns dict with {id, z_m, tvec_m, decision_margin} or None if no tag found.
+    z_m is forward distance along camera Z axis.
+    """
+    try:
+        from pupil_apriltags import Detector
+    except ImportError:
+        return None
 
+    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
+
+    det = Detector(
+        families=families,
+        nthreads=2,
+        quad_decimate=2.0,
+        quad_sigma=0.0,
+        refine_edges=1,
+        decode_sharpening=0.25,
+        debug=0,
+    )
+
+    results = det.detect(
+        gray,
+        estimate_tag_pose=True,
+        camera_params=(intr.fx, intr.fy, intr.cx, intr.cy),
+        tag_size=float(tag_size_m),
+    )
+
+    if not results:
+        return None
+
+    best = max(results, key=lambda r: r.decision_margin)
+    t = best.pose_t.reshape(3)  # meters
+    z_m = float(t[2])
+
+    return {
+        "id": int(best.tag_id),
+        "z_m": z_m,
+        "tvec_m": [float(t[0]), float(t[1]), float(t[2])],
+        "decision_margin": float(best.decision_margin),
+    }
 # ----------------------------
 # Intrinsics
 # ----------------------------
@@ -305,8 +350,15 @@ def parse_args():
     # Input image
     p.add_argument("--image", default=None, help="Path to input image. If set, skips camera capture.")
 
-    return p.parse_args()
+    # April tags for distance estimation (optional)
+    p.add_argument("--use_apriltag", action="store_true",
+               help="If set, try AprilTag; if found use it for distance/scale.")
+    p.add_argument("--tag_size_m", type=float, default=0.05,
+                help="AprilTag edge length in meters (e.g., 0.05 for 5cm).")
+    p.add_argument("--tag_family", default="tag36h11",
+                help="AprilTag family (e.g., tag36h11).")
 
+    return p.parse_args()
 
 def main():
     args = parse_args()
@@ -369,7 +421,7 @@ def main():
         cap_cfg = CaptureConfig(...)
         with CameraCapture(cap_cfg) as cam:
             time.sleep(0.2)
-            rgb = cam.capture_best_of_n(cam, n=6, sleep_s=0.08)
+            rgb = capture_best_of_n(cam, n=6, sleep_s=0.08)
 
     rgb_yolo = rgb
     rgb_meas = undistort_rgb(rgb, intr) 
@@ -391,7 +443,17 @@ def main():
     detections_out: List[Dict[str, Any]] = []
 
     # Distance for this capture (meters)
-    Z = float(dist_provider.get_distance_m())
+    Z_fallback = float(dist_provider.get_distance_m())
+    tag_info = None
+
+    if args.use_apriltag:
+        tag_info = apriltag_distance_z_m(rgb, intr, args.tag_size_m, args.tag_family)
+        if tag_info is not None and tag_info["z_m"] > 0:
+            Z = float(tag_info["z_m"])
+        else:
+            Z = Z_fallback
+    else:
+        Z = Z_fallback
 
     # Class names mapping
     names = r.names  # dict: class_id -> name
@@ -406,7 +468,14 @@ def main():
         payload = {
             "timestamp": base,
             "image": str(img_path),
+            "apriltag_settings": {
+                "enabled": args.use_apriltag,
+                "tag_size_mm": args.tag_size_mm,
+                "tag_family": args.tag_family
+            },
             "distance_m": Z,
+            "distance_fallback_m": Z_fallback,
+            "distance_source_used": "apriltag" if tag_info else args.distance_source,
             "intrinsics": str(Path(args.intrinsics)),
             "angle_deg": args.angle_deg,
             "depth_ratio": args.depth_ratio,
