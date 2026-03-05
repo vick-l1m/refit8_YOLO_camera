@@ -15,6 +15,12 @@ Backends:
 - picamera2
 - opencv
 - rpicam-still (works but not ideal for high-FPS video)
+
+Vesion
+date
+Inputs
+outputs
+Name
 """
 
 from __future__ import annotations

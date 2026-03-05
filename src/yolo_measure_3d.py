@@ -451,26 +451,34 @@ def parse_args():
 def main():
     args = parse_args()
 
+
     intr = load_intrinsics(Path(args.intrinsics))
 
-    # Distance provider (fallback distance)
+
+    # Distance provider (fallback if no AprilTag pose)
     dist_provider = build_distance_provider(args.distance_source, args.distance_m, args.distance_file)
 
-    # Output dirs (store in <project_root>/captures/... NOT <project_root>/scripts/captures)
-    # Assumes you run from project root (your run_*.sh does cd "$PROJECT_ROOT")
-    project_root = Path.cwd()
+
+    # ----------------------------
+    # Output dirs (repo-root relative)
+    # ----------------------------
+    # Prefer placing captures under <repo>/captures/... (not scripts/captures)
+    project_root = Path(__file__).resolve().parent
+    # If this file lives in something like <repo>/src/, go up one
+    if project_root.name in ("src", "scripts"):
+        project_root = project_root.parent
+
+
     base_captures = project_root / "captures" / "yolo" / "measure_3d"
     img_dir = base_captures / "images"
     js_dir = base_captures / "data"
     img_dir.mkdir(parents=True, exist_ok=True)
     js_dir.mkdir(parents=True, exist_ok=True)
 
-    # -------------------------------------------------------------------------
-    # Output base name priority:
-    #   1) --name (highest priority)
-    #   2) --image (use input stem + "_measured")
-    #   3) timestamp
-    # -------------------------------------------------------------------------
+
+    # ----------------------------
+    # Name priority: --name > --image stem > timestamp
+    # ----------------------------
     if args.name.strip():
         base = args.name.strip()
     elif args.image:
@@ -478,22 +486,28 @@ def main():
     else:
         base = time.strftime("%Y%m%d_%H%M%S")
 
-    # -------------------------------------------------------------------------
-    # Load image (from file) OR capture from camera
-    # -------------------------------------------------------------------------
+
+    # ----------------------------
+    # Acquire image (RGB)
+    # ----------------------------
     if args.image:
         img_path_in = Path(args.image)
         if not img_path_in.exists():
             raise FileNotFoundError(f"--image not found: {img_path_in}")
 
-        bgr = cv2.imread(str(img_path_in), cv2.IMREAD_COLOR)
-        if bgr is None:
+
+        bgr_in = cv2.imread(str(img_path_in), cv2.IMREAD_COLOR)
+        if bgr_in is None:
             raise RuntimeError(f"Failed to read image: {img_path_in}")
-        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+
+
+        rgb = cv2.cvtColor(bgr_in, cv2.COLOR_BGR2RGB)
+
+
     else:
-        # Match your clear still-image.sh behavior by using rpicam-still backend
+        # Camera capture config
         cap_cfg = CaptureConfig(
-            backend="rpicam-still",
+            backend="rpicam-still",  # matches your still_image.sh behavior on Pi
             width=args.width,
             height=args.height,
             device_index=args.device_index,
@@ -505,17 +519,20 @@ def main():
         cap_cfg.rpicam.autofocus = True
         cap_cfg.rpicam.af_mode = "continuous"
 
+
         with CameraCapture(cap_cfg) as cam:
             time.sleep(0.2)
             rgb = capture_best_of_n(cam, n=6, sleep_s=0.08)
 
-    # Optional undistort BEFORE AprilTag + YOLO so all pixel geometry matches
+
+    # Optional undistort BEFORE tag detection and YOLO so geometry is consistent
     if args.undistort:
         rgb = undistort_rgb(rgb, intr)
 
-    # -------------------------------------------------------------------------
-    # AprilTag detection (optional)
-    # -------------------------------------------------------------------------
+
+    # ----------------------------
+    # AprilTag detection + drawing
+    # ----------------------------
     apriltags: List[Dict[str, Any]] = []
     if args.use_apriltag:
         apriltags = detect_apriltags(
@@ -524,23 +541,28 @@ def main():
             tag_size_m=float(args.tag_size_m),
             families=str(args.tag_family),
         )
-
     apriltag_count = len(apriltags)
 
-    # -------------------------------------------------------------------------
-    # Distance selection:
-    #   - fallback from your DistanceProvider
-    #   - if AprilTag enabled and at least one tag has pose, use its tz as Z
-    # -------------------------------------------------------------------------
+
+    annotated = rgb.copy()
+    if apriltag_count > 0:
+        annotated = draw_apriltag_boxes(annotated, apriltags, thickness=2)
+
+
+    # ----------------------------
+    # Distance selection (Z)
+    # ----------------------------
     Z_fallback = float(dist_provider.get_distance_m())
     Z = Z_fallback
-    tag_info: Optional[Dict[str, Any]] = None
+    tag_info = None
+
 
     if args.use_apriltag and apriltag_count > 0:
         with_pose = [t for t in apriltags if t.get("pose_t_m") is not None]
         if with_pose:
             best = max(with_pose, key=lambda t: float(t.get("decision_margin", 0.0)))
-            Z = float(best["pose_t_m"][2])  # tz in meters
+            # pose_t_m = [tx, ty, tz] in meters
+            Z = float(best["pose_t_m"][2])
             tag_info = {
                 "id": int(best["id"]),
                 "z_m": Z,
@@ -548,52 +570,45 @@ def main():
                 "decision_margin": float(best["decision_margin"]),
             }
 
-    # -------------------------------------------------------------------------
-    # Run YOLO
-    # -------------------------------------------------------------------------
+
+    distance_source_used = "apriltag" if tag_info is not None else args.distance_source
+
+
+    # ----------------------------
+    # YOLO inference (IMPORTANT: use BGR for best results)
+    # ----------------------------
     model = YOLO(args.model)
 
+
+    bgr_for_yolo = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+
+
     results = model.predict(
-        source=rgb,
-        conf=args.conf,
-        iou=args.iou,
+        source=bgr_for_yolo,
+        conf=float(args.conf),
+        iou=float(args.iou),
+        imgsz=int(args.imgsz),
         verbose=False,
-        imgsz=int(args.imgsz) if getattr(args, "imgsz", None) else max(rgb.shape[0], rgb.shape[1]),
     )
     r = results[0]
 
-    # -------------------------------------------------------------------------
-    # Annotate image (start with tags, then YOLO + 3D)
-    # -------------------------------------------------------------------------
-    annotated = rgb.copy()
-
-    if apriltag_count > 0:
-        annotated = draw_apriltag_boxes(annotated, apriltags, thickness=2)
 
     detections_out: List[Dict[str, Any]] = []
 
-    # Handle no detections
+
+    # If no boxes, still write outputs (with apriltag info)
     if r.boxes is None or len(r.boxes) == 0:
         out_img_path = img_dir / f"{base}.png"
         out_json_path = js_dir / f"{base}.json"
 
+
         cv2.imwrite(str(out_img_path), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
+
 
         payload = {
             "timestamp": base,
             "image": str(out_img_path),
             "input_image": str(args.image) if args.image else None,
-            "intrinsics": str(Path(args.intrinsics)),
-            "undistort": bool(args.undistort),
-            "model": str(args.model),
-            "conf": float(args.conf),
-            "iou": float(args.iou),
-            "angle_deg": float(args.angle_deg),
-            "depth_ratio": float(args.depth_ratio),
-            "depth_min": float(args.depth_min),
-            "distance_m": Z,
-            "distance_fallback_m": Z_fallback,
-            "distance_source_used": "apriltag" if tag_info else args.distance_source,
             "apriltag": {
                 "enabled": bool(args.use_apriltag),
                 "family": str(args.tag_family),
@@ -602,20 +617,42 @@ def main():
                 "tags": apriltags,
                 "best_for_distance": tag_info,
             },
+            "distance_m": float(Z),
+            "distance_fallback_m": float(Z_fallback),
+            "distance_source_used": distance_source_used,
+            "intrinsics": str(Path(args.intrinsics)),
+            "undistort": bool(args.undistort),
+            "model": str(args.model),
+            "conf": float(args.conf),
+            "iou": float(args.iou),
+            "imgsz": int(args.imgsz),
             "detections": [],
         }
         out_json_path.write_text(json.dumps(payload, indent=2))
-        print(f"No detections. Saved: {out_img_path} and {out_json_path}")
+
+
+        print("No YOLO detections.")
+        print(f"Saved annotated image: {out_img_path}")
+        print(f"Saved JSON: {out_json_path}")
+
+
+        if args.preview:
+            cv2.imshow("YOLO 3D Measure", cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
         return
 
-    # Convert tensors -> numpy safely
+
+    # ----------------------------
+    # Parse YOLO boxes + draw + measure
+    # ----------------------------
     boxes_xyxy = r.boxes.xyxy.cpu().numpy()
     confs = r.boxes.conf.cpu().numpy()
     clss = r.boxes.cls.cpu().numpy().astype(int)
+    names = r.names  # class_id -> label
 
-    # Filter + limit
-    names = r.names  # dict: class_id -> name
-    chosen: List[int] = []
+
+    chosen = []
     for i in range(len(boxes_xyxy)):
         cls_id = int(clss[i])
         label = names.get(cls_id, str(cls_id))
@@ -623,9 +660,10 @@ def main():
             continue
         chosen.append(i)
 
-    # Sort by confidence desc
+
     chosen.sort(key=lambda i: float(confs[i]), reverse=True)
     chosen = chosen[: max(1, int(args.max_detections))]
+
 
     for idx in chosen:
         x1, y1, x2, y2 = boxes_xyxy[idx]
@@ -633,30 +671,29 @@ def main():
         cls_id = int(clss[idx])
         label = names.get(cls_id, str(cls_id))
 
+
         bw_px = float(max(1.0, x2 - x1))
         bh_px = float(max(1.0, y2 - y1))
         uc = float((x1 + x2) / 2.0)
         vc = float((y1 + y2) / 2.0)
 
-        # Metric width/height
-        W, H = bbox_to_metric_dims(bw_px, bh_px, Z, intr)
 
-        # Depth estimate
+        W, H = bbox_to_metric_dims(bw_px, bh_px, Z, intr)
         D = estimate_depth_from_angle(W, args.angle_deg, args.depth_ratio, args.depth_min)
 
-        # Center in camera coordinates (approx)
+
         Xc, Yc, Zc = pixel_center_to_cam_xyz(uc, vc, Z, intr)
 
-        # Build cuboid, yaw for drawing
+
         corners_obj = make_cuboid_corners(W, H, D)
-        yaw_rad = math.radians(args.angle_deg)
+        yaw_rad = math.radians(float(args.angle_deg))
         corners_rot = rotate_yaw_y(corners_obj, yaw_rad)
         corners_cam = corners_rot + np.array([Xc, Yc, Zc], dtype=np.float64)
 
-        # Draw 3D box
+
         annotated = draw_3d_box(annotated, intr, corners_cam, thickness=2)
 
-        # Draw 2D bbox + label
+
         cv2.rectangle(
             annotated,
             (int(round(x1)), int(round(y1))),
@@ -675,6 +712,7 @@ def main():
             cv2.LINE_AA,
         )
 
+
         detections_out.append(
             {
                 "class": label,
@@ -682,43 +720,34 @@ def main():
                 "confidence": conf,
                 "bbox_xyxy_px": [float(x1), float(y1), float(x2), float(y2)],
                 "bbox_wh_px": [bw_px, bh_px],
-                "distance_m": Z,
-                "dimensions_m": {"width": W, "height": H, "depth": D},
+                "distance_m": float(Z),
+                "dimensions_m": {"width": float(W), "height": float(H), "depth": float(D)},
                 "assumptions": {
                     "width_height_from_pinhole": True,
                     "depth_estimated_from_angle": True,
+                    "distance_source_used": distance_source_used,
                     "angle_deg": float(args.angle_deg),
                     "depth_ratio": float(args.depth_ratio),
                     "depth_min_m": float(args.depth_min),
-                    "distance_source_used": "apriltag" if tag_info else args.distance_source,
                 },
             }
         )
 
-    # -------------------------------------------------------------------------
+
+    # ----------------------------
     # Save outputs
-    # -------------------------------------------------------------------------
-    out_img_path = img_dir / f"{base}_3dbox.png"
+    # ----------------------------
+    out_img_path = img_dir / f"{base}.png"
     out_json_path = js_dir / f"{base}.json"
 
+
     cv2.imwrite(str(out_img_path), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
+
 
     payload = {
         "timestamp": base,
         "image": str(out_img_path),
         "input_image": str(args.image) if args.image else None,
-        "intrinsics": str(Path(args.intrinsics)),
-        "undistort": bool(args.undistort),
-        "model": str(args.model),
-        "conf": float(args.conf),
-        "iou": float(args.iou),
-        "imgsz": int(args.imgsz),
-        "angle_deg": float(args.angle_deg),
-        "depth_ratio": float(args.depth_ratio),
-        "depth_min": float(args.depth_min),
-        "distance_m": Z,
-        "distance_fallback_m": Z_fallback,
-        "distance_source_used": "apriltag" if tag_info else args.distance_source,
         "apriltag": {
             "enabled": bool(args.use_apriltag),
             "family": str(args.tag_family),
@@ -727,13 +756,23 @@ def main():
             "tags": apriltags,
             "best_for_distance": tag_info,
         },
+        "distance_m": float(Z),
+        "distance_fallback_m": float(Z_fallback),
+        "distance_source_used": distance_source_used,
+        "intrinsics": str(Path(args.intrinsics)),
+        "undistort": bool(args.undistort),
+        "model": str(args.model),
+        "conf": float(args.conf),
+        "iou": float(args.iou),
+        "imgsz": int(args.imgsz),
         "detections": detections_out,
     }
-
     out_json_path.write_text(json.dumps(payload, indent=2))
+
 
     print(f"Saved annotated image: {out_img_path}")
     print(f"Saved JSON: {out_json_path}")
+
 
     if args.preview:
         cv2.imshow("YOLO 3D Measure", cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
