@@ -405,7 +405,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="AprilTag-based interactive ruler.")
     ap.add_argument("image", type=str, help="Path to image.jpg")
     ap.add_argument("--tag-size-m", type=float, required=True, help="Physical AprilTag size (outer black square) in meters")
-    ap.add_argument("--family", type=str, default="tag36h11", help="AprilTag family (e.g. tag36h11)")
+    ap.add_argument("--family", type=str, default="tag25h9", help="AprilTag family (e.g. tag36h11)")
 
     # Intrinsics (optional)
     ap.add_argument("--intrinsics", type=str, default="", help="Path to intrinsics JSON (fx,fy,cx,cy, optional dist)")
