@@ -60,8 +60,44 @@ chmod +x record_video.sh
 chmod +x run_yolo_still_image.sh
 chmod +x run_yolo_live_record.sh
 chmod +x run_yolo_measure_3d.sh
+chmod +x run_april_tag_measure.sh
 
 # follow this for any other scripts
+```
+
+## Measuring objects with April Tags
+Ensure you are in the .venv
+
+### 1. Run the script
+```bash
+# Must specify image - others are optional
+./run_apil_tag_measure.sh ~/Downloads/image.jpg --tag-size-m 0.05 --family tag25h9 --name image_measured
+```
+
+### 2. Using the UI:
+When the window opens:
+- Draw a measurement line:
+```Left-click``` and ```drag``` from point A to point B, then ```release```.
+It will store that measurement and label it 1: ... m, 2: ... m, etc.
+- Preview while dragging:
+While you drag, it shows a live preview length.
+- Reset all lines: press ```r```
+- Save outputs (image + JSON): press ```s```
+(It will save to your outdir with your chosen --name)
+- Quit without saving: press ```q``` or ```ESC```
+
+Important accuracy note: quick mode assumes the line you draw lies on the same plane as the tag.
+
+### 3. Access the data
+The data is stored in the following locations:
+```bash
+refit8_YOLO_camera/captures/april_tag_measure/
+
+# Annotated image
+image_measured_annotated.jpg
+
+# Json data
+image_measured_results.json
 ```
 
 ## YOLO Measure Object in 3D
