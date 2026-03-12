@@ -2,7 +2,8 @@
 """
 camera_capture.py
 
-Shared camera capture helpers for Raspberry Pi + Arducam.
+Shared camera capture helpers for Raspberry Pi + Arducam. 
+This allows you to use the camera without worrying what the backend underneath is.
 
 Backends:
 - rpicam-still  (recommended for Arducam on Pi
@@ -37,7 +38,7 @@ class RPICamStillConfig:
     time_ms: int = 3000
 
     # If preview=False, we pass -n to rpicam-still (no preview window).
-    preview: bool = False
+    preview: bool = True
 
     # Autofocus args via your existing helper
     autofocus: bool = True
@@ -54,7 +55,7 @@ class CaptureConfig:
     # Shared resolution preference (used by picamera2/opencv; rpicam has its own too)
     width: int = 1920
     height: int = 1080
-    warmup_s: float = 0.2
+    warmup_s: float = 0.3
 
     # Picamera2 best-effort autofocus
     af_mode: Optional[int] = 2
