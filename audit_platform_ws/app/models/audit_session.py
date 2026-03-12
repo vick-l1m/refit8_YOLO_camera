@@ -15,6 +15,15 @@ from typing import Optional
 @dataclass
 class AuditSession:
     audit_id: str
+    created_at: str
     audit_name: Optional[str] = None
-    created_at: datetime
+
+    # Location
+    selected_location_id: Optional[str] = None
+    selected_location_name: Optional[str] = None
+    
+    # Asset Category
+    selected_asset_category_id: Optional[str] = None
+    selected_asset_category_name: Optional[str] = None
+
     

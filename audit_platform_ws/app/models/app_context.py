@@ -21,7 +21,14 @@ class AppContext:
     # Location
     available_locations: List[Dict[str, Any]] = field(default_factory=list)
     current_location: Optional[Dict[str, Any]] = None
-    # Form
-    available_forms: List[Dict[str, Any]] = field(default_factory=list)
-    current_form: Optional[Dict[str, Any]] = None
-    
+
+    # Asset Category
+    available_asset_categories: List[Dict[str, Any]] = field(default_factory=list)
+    current_asset_category: Optional[Dict[str, Any]] = None
+
+    # Images
+    last_captured_image_path: Optional[Path] = None
+    last_captured_image_name: Optional[str] = None
+
+    current_item_dir: Optional[Path] = None
+    current_item_base_image_name: Optional[str] = None

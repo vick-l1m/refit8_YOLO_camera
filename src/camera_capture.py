@@ -179,7 +179,7 @@ class CameraCapture:
     def _rpicam_autofocus_args(self) -> list[str]:
         if not self.cfg.rpicam.autofocus:
             return []
-        from Arducam_ws.camera_focus import rpicam_autofocus_args  # your helper
+        from src.Arducam_ws.camera_focus import rpicam_autofocus_args  # your helper
         return rpicam_autofocus_args(enabled=True, mode=self.cfg.rpicam.af_mode)
 
     def capture_to_file(self, out_path: Path) -> None:

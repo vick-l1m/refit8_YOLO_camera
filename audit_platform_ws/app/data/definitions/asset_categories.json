@@ -1,0 +1,16 @@
+{
+  "asset_categories": [
+    {
+      "id": "ac_001",
+      "name": "Buildform"
+    },
+    {
+      "id": "ac_002",
+      "name": "FF&E"
+    },
+    {
+      "id": "ac_003",
+      "name": "Services"
+    }
+  ]
+}

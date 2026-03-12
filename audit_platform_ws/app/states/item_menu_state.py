@@ -1,9 +1,3 @@
-"""
-start_state.py
-
-Defines the StartState class, which represents the initial state of the application.
-"""
-
 from __future__ import annotations
 
 from app.models.app_context import AppContext
@@ -11,12 +5,12 @@ from app.states.state import State
 from app.ui.test_ui_adapter import UIAdapter
 
 
-class StartState(State):
-    name = "START"
+class ItemMenuState(State):
+    name = "ITEM_MENU"
 
     def on_enter(self, context: AppContext, ui: UIAdapter) -> None:
         context.current_state = self.name
-        ui.show_start_screen()
+        ui.show_item_menu_screen()
 
     def handle_event(
         self,
@@ -24,9 +18,12 @@ class StartState(State):
         context: AppContext,
         controller: "AppController",
     ) -> None:
-        if event == "CREATE_NEW_AUDIT":
-            #  Next State
-            controller.create_new_audit_and_go_to_location_select()
+        if event == "GO_TO_CAMERA_CAPTURE":
+            controller.transition_to("CAMERA_CAPTURE")
+        elif event == "BACK_TO_LOCATION_SELECT":
+            controller.transition_to("LOCATION_SELECT")
+        elif event == "BACK_TO_ASSET_CATEGORY_SELECT":
+            controller.transition_to("ASSET_CATEGORY_SELECT")
         else:
             controller.ui.show_error(
                 f"Unsupported event '{event}' in state '{self.name}'"

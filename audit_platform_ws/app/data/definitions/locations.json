@@ -1,0 +1,16 @@
+{
+  "locations": [
+    {
+      "id": "loc_001",
+      "name": "Building A"
+    },
+    {
+      "id": "loc_002",
+      "name": "Building B"
+    },
+    {
+      "id": "loc_003",
+      "name": "Workshop 1"
+    }
+  ]
+}

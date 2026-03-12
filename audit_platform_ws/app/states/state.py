@@ -10,7 +10,6 @@ from abc import ABC, abstractmethod
 
 from app.models.app_context import AppContext
 from app.ui.test_ui_adapter import UIAdapter
-from refit8_YOLO_camera.audit_platform_ws.app.controller.app_controller import AppController
 
 
 class State(ABC):
