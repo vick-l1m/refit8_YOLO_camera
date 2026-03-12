@@ -12,7 +12,7 @@ MEASURE_PY="${MEASURE_PY:-$PROJECT_ROOT/src/yolo_measure_3d.py}"
 # Required / important paths
 # -----------------------------------------------------------------------------
 MODEL_PATH="${MODEL_PATH:-$HOME/models/yolov8n.pt}"
-INTRINSICS_PATH="${INTRINSICS_PATH:-$PROJECT_ROOT/intrinsics/intrinsics_1920x1080.json}"
+INTRINSICS_PATH="${INTRINSICS_PATH:-$PROJECT_ROOT/calibration/arducam_1920x1080/arducam_intrinsics_1920x1080.json}"
 OUTDIR="${OUTDIR:-$HOME/captures/yolo/measure_3d}"
 NAME="${NAME:-}"   # optional; if empty -> timestamp used
 

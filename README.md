@@ -65,6 +65,17 @@ chmod +x run_april_tag_measure.sh
 # follow this for any other scripts
 ```
 
+## Using the audit_platform app
+```bash
+# run
+cd audit_platform_ws
+python3 -m app.main
+```
+
+This is a app that uses a state machine to create a user interface. The end goal is to take this camera into an audit,
+take an images of each object and then have the option to take more images of that object. The user will also choose the 
+location and asset category for each object, which will save in a .csv file for later data transfer.
+
 ## Measuring objects with April Tags
 Ensure you are in the .venv
 
@@ -122,7 +133,7 @@ Ensure that the intrinsics file is being used by the startup script - or run it 
 
 The important parameters to change are:
 - ```--name```: name of the output file. Default - ```timestamp``` 
-- ```--intrinsics```: intrinsics file for the camera calibration. Default - ```captures/fake_intrinsices_1920x1080.json``` 
+- ```--intrinsics```: intrinsics file for the camera calibration. Default - ```calibration/arducam_1920x1080/arducam_intrinsices_1920x1080.json``` 
 - ```--angle_deg```: The angle that the photo is being taken relative to the object's front face (degrees). Default - ```45``` 
 - ```--depth ratio```: Estimated ratio between the width and depth - Default - ```1``` 
 - ```--distance```: The distance from the camera to the object (meters). Default - ```2.0``` 
