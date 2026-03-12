@@ -37,7 +37,7 @@ class CameraCaptureState(State):
                 context.current_item_base_image_name = result["image_name"]
 
                 controller.ui.show_info(f"Saved base image: {result['image_name']}")
-                controller.transition_to("ITEM_IMAGE_MENU")
+                controller.transition_to("ADDITIONAL_IMAGES_MENU")
 
             except Exception as e:
                 controller.ui.show_error(f"Failed to capture image: {e}")
