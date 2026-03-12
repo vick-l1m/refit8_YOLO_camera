@@ -22,6 +22,7 @@ import cv2
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
+from camera_capture import CameraCapture, CaptureConfig, RPICamStillConfig
 
 def main():
     parser = argparse.ArgumentParser(description="Auto capture calibration images.")
