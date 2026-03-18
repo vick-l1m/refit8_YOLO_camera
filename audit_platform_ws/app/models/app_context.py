@@ -32,3 +32,6 @@ class AppContext:
 
     current_item_dir: Optional[Path] = None
     current_item_base_image_name: Optional[str] = None
+
+    preview_service: Optional[Any] = None
+    base_image_preview_process: Optional[Any] = None

@@ -28,9 +28,10 @@ class UIAdapter:
 
     def show_camera_capture_screen(self) -> None:
         print("\n=== CAMERA CAPTURE ===")
-        print("Preview would open here.")
-        print("1. Take Picture")
-        print("2. Cancel")
+        print("A live camera preview window should now be open.")
+        print("Commands:")
+        print("  1 -> Take Picture")
+        print("  2 -> Cancel")
 
     def show_item_image_menu_screen(self, image_path: Path) -> None:
         print("\n=== ADDITIONAL IMAGES MENU ===")
@@ -38,8 +39,18 @@ class UIAdapter:
         print("1. Take New Image")
         print("2. End")
 
+    def show_camera_capture_additional_screen(self) -> None:
+        print("\n=== ADDITIONAL IMAGE CAPTURE ===")
+        print("The original image for this item should be open.")
+        print("A live camera preview should also be running.")
+        print("Take more images of the same object from other angles.")
+        print("Commands:")
+        print("  1 -> Take Picture")
+        print("  2 -> Cancel")
+
     def show_error(self, message: str) -> None:
         print(f"\n[ERROR] {message}")
 
     def show_info(self, message: str) -> None:
         print(f"\n[INFO] {message}")
+
