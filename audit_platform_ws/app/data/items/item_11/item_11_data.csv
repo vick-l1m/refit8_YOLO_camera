@@ -1,0 +1,13 @@
+field,value
+item_name,item_11
+image_name,item_11.jpg
+image_path,/home/polymaya/refit8_YOLO_camera/audit_platform_ws/app/data/items/item_11/item_11.jpg
+item_dir,/home/polymaya/refit8_YOLO_camera/audit_platform_ws/app/data/items/item_11
+additional_images_dir,/home/polymaya/refit8_YOLO_camera/audit_platform_ws/app/data/items/item_11/item_11_additional_images
+audit_id,20260319170107
+location_id,
+location_name,
+asset_category_id,
+asset_category_name,
+time_taken,2026-03-19T17:03:20
+/home/polymaya/refit8_YOLO_camera/audit_platform_ws/app/data/items/item_11/item_11.jpg,0,tag25h9,0.05,4783.3038330078125,False,pupil_apriltags,1,1312,220,1545,148,0.0509837710466912,quick

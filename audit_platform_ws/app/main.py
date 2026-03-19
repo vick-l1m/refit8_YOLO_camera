@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+import signal
 
 from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QTimer
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
@@ -38,6 +40,15 @@ def main() -> None:
         ui.set_preview_service(context.preview_service)
 
     controller.start()
+
+    # Allow Ctrl+C from terminal to quit the Qt app cleanly
+    signal.signal(signal.SIGINT, lambda *args: app.quit())
+
+    # Let Python process signals while Qt event loop is running
+    sigint_timer = QTimer()
+    sigint_timer.start(200)
+    sigint_timer.timeout.connect(lambda: None)
+    signal.signal(signal.SIGINT, lambda *args: window.close())
 
     # Full-screen for Pi touchscreen kiosk use
     window.showFullScreen()

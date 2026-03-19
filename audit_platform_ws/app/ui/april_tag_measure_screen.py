@@ -51,6 +51,12 @@ class AprilTagMeasureScreen(QWidget):
         self.header_label = QLabel("AprilTag Measure")
         self.header_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
+        self.details_label = QLabel(
+            "Tag size: 0.05m\nSearching for April tag: tag25h9"
+        )
+        self.details_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.details_label.setWordWrap(True)
+
         self.canvas = MeasurementCanvas()
         self.canvas.line_added.connect(self._on_line_added)
         self.canvas.measurement_failed.connect(self._on_measurement_failed)
@@ -83,7 +89,7 @@ class AprilTagMeasureScreen(QWidget):
 
         layout.addLayout(left, stretch=3)
         layout.addLayout(right, stretch=1)
-
+    
     def set_session(
         self,
         session: MeasurementSession,
@@ -97,8 +103,14 @@ class AprilTagMeasureScreen(QWidget):
             title = f"Measure {image_path.stem}"
         self.header_label.setText(title)
 
+        self.details_label.setText(
+            f"Tag size: {session.tag_size_m:.2f}m\n"
+            f"Searching for April tag: {session.tag_family}"
+        )
+
         self.status_label.setText("Draw a line on the image to measure it.")
         self.canvas.set_session(session)
+
 
     def _clear_lines(self) -> None:
         self.canvas.clear_measurements()

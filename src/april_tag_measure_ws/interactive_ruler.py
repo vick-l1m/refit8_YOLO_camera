@@ -26,8 +26,7 @@ from typing import Any, Dict, Optional
 import cv2
 import numpy as np
 
-
-from measurement_session import LineMeasurement, MeasurementSession, Results
+from src.april_tag_measure_ws.measurement_session import LineMeasurement, MeasurementSession, Results
 
 
 class InteractiveRuler:

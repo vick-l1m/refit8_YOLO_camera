@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 live_camera_preview_service.py
 
@@ -34,37 +35,49 @@ class LiveCameraPreviewService:
 
         self._frame_lock = threading.Lock()
         self._camera_lock = threading.Lock()
+        self._service_lock = threading.Lock()
 
         self._latest_frame: Optional[np.ndarray] = None
 
     def start(self) -> None:
-        if self._running:
-            return
+        with self._service_lock:
+            if self._running:
+                return
 
-        cfg = CaptureConfig(
-            backend="auto",
-            width=1980,
-            height=1020,
-            warmup_s=0.3,
-        )
+            print("[DEBUG] Live preview start requested")
 
-        self._camera = CameraCapture(cfg)
-        self._camera.start()
+            cfg = CaptureConfig(
+                backend="auto",
+                width=1980,
+                height=1020,
+                warmup_s=0.3,
+            )
 
-        self._running = True
-        self._thread = threading.Thread(target=self._capture_loop, daemon=True)
-        self._thread.start()
+            self._camera = CameraCapture(cfg)
+            self._camera.start()
+
+            self._running = True
+            self._thread = threading.Thread(target=self._capture_loop, daemon=True)
+            self._thread.start()
+
+            print("[DEBUG] Live preview started")
 
     def _capture_loop(self) -> None:
-        while self._running and self._camera is not None:
+        print("[DEBUG] Preview thread entered")
+        while self._running:
             try:
                 with self._camera_lock:
-                    if not self._running or self._camera is None:
+                    camera = self._camera
+                    if not self._running or camera is None:
                         break
-                    frame = self._camera.capture_rgb()
+                    frame = camera.capture_rgb()
+
+                if frame is None:
+                    time.sleep(0.03)
+                    continue
 
                 with self._frame_lock:
-                    self._latest_frame = frame
+                    self._latest_frame = frame.copy()
 
             except Exception as e:
                 print(f"[DEBUG] Preview loop capture failed: {e}")
@@ -72,6 +85,8 @@ class LiveCameraPreviewService:
                 continue
 
             time.sleep(0.03)
+
+        print("[DEBUG] Preview thread exiting")
 
     def get_latest_frame(self) -> Optional[np.ndarray]:
         with self._frame_lock:
@@ -83,15 +98,14 @@ class LiveCameraPreviewService:
         out_path = Path(out_path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if self._camera is None:
-            raise RuntimeError("Camera is not running.")
-
         with self._camera_lock:
+            if self._camera is None:
+                raise RuntimeError("Camera is not running.")
             frame = self._camera.capture_rgb()
 
         if frame is None:
             raise RuntimeError("Failed to capture frame.")
-        
+
         bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         ok = cv2.imwrite(str(out_path), bgr)
         if not ok:
@@ -101,24 +115,37 @@ class LiveCameraPreviewService:
             self._latest_frame = frame.copy()
 
     def stop(self) -> None:
-        self._running = False
+        with self._service_lock:
+            if not self._running and self._camera is None:
+                return
 
-        thread = self._thread
-        self._thread = None
-        if thread is not None and thread.is_alive():
-            thread.join(timeout=1.5)
+            print("[DEBUG] Live preview stop requested")
+            self._running = False
 
-        with self._camera_lock:
-            camera = self._camera
-            self._camera = None
-            if camera is not None:
-                try:
-                    camera.stop()
-                except Exception:
-                    pass
+            # Stop camera first so any blocking capture call can unwind.
+            with self._camera_lock:
+                camera = self._camera
+                self._camera = None
+                if camera is not None:
+                    try:
+                        print("[DEBUG] Stopping camera backend")
+                        camera.stop()
+                    except Exception as e:
+                        print(f"[DEBUG] Camera stop error ignored: {e}")
 
-        with self._frame_lock:
-            self._latest_frame = None
+            thread = self._thread
+            self._thread = None
+            if thread is not None and thread.is_alive():
+                print("[DEBUG] Waiting for preview thread to exit")
+                thread.join(timeout=2.0)
+                if thread.is_alive():
+                    print("[DEBUG] Warning: preview thread did not exit cleanly")
+                else:
+                    print("[DEBUG] Preview thread joined")
 
+            with self._frame_lock:
+                self._latest_frame = None
 
+            time.sleep(0.2)
+            print("[DEBUG] Live preview fully stopped")
 

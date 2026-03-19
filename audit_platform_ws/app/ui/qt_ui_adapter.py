@@ -58,6 +58,18 @@ class AuditMainWindow(QMainWindow):
         root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(10)
 
+        top_bar = QHBoxLayout()
+        top_bar.addStretch()
+
+        self.btn_toggle_fullscreen = QPushButton("[]")
+        self.btn_toggle_fullscreen.setObjectName("fullscreenButton")
+        self.btn_toggle_fullscreen.setToolTip("Toggle Fullscreen")
+        self.btn_toggle_fullscreen.setFixedSize(44, 44)
+        self.btn_toggle_fullscreen.clicked.connect(self.toggle_fullscreen)
+
+        top_bar.addWidget(self.btn_toggle_fullscreen, alignment=Qt.AlignRight | Qt.AlignTop)
+        root.addLayout(top_bar)
+
         self.state_title = QLabel("STATE")
         self.state_title.setAlignment(Qt.AlignCenter)
         self.state_title.setObjectName("stateTitle")
@@ -192,6 +204,26 @@ class AuditMainWindow(QMainWindow):
             QLabel#previewLabel {
                 color: #e5e7eb;
                 font-size: 18px;
+            }
+
+            QPushButton#fullscreenButton {
+                background: #374151;
+                color: white;
+                border: none;
+                border-radius: 10px;
+                font-size: 18px;
+                font-weight: 700;
+                min-height: 36px;
+                min-width: 36px;
+                padding: 4px;
+            }
+
+            QPushButton#fullscreenButton:hover {
+                background: #1f2937;
+            }
+
+            QPushButton#fullscreenButton:pressed {
+                background: #111827;
             }
             """
         )
@@ -607,6 +639,14 @@ class AuditMainWindow(QMainWindow):
                 Qt.SmoothTransformation,
             )
             target_label.setPixmap(scaled)
+
+    def toggle_fullscreen(self) -> None:
+        if self.isFullScreen():
+            self.showNormal()
+            self.btn_toggle_fullscreen.setText("{}")
+        else:
+            self.showFullScreen()
+            self.btn_toggle_fullscreen.setText("[]")
 
 
 class UIAdapter:
