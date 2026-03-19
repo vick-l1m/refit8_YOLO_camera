@@ -5,6 +5,8 @@
 /captures/videos
 /captures/yolo
 
+/refit8_YOLO_camera/audit_platform_ws/app/data/items
+
 # python
 src/Arducam_ws/__pycache__/
 src/__pycache__/
