@@ -1,16 +1,9 @@
-"""
-qt_ui_adapter.py
-
-Defines the UIAdapter class, which serves as a bridge between the Qt-based UI (AuditMainWindow) 
-and the application logic (AppController and states).
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QSize
 from PySide6.QtGui import QFont, QImage, QPixmap
 from PySide6.QtWidgets import (
     QLabel,
@@ -93,12 +86,14 @@ class AuditMainWindow(QMainWindow):
             QMainWindow {
                 background: #f4f6f8;
             }
+
             QLabel#stateTitle {
                 font-size: 28px;
                 font-weight: bold;
                 color: #1f2937;
                 padding: 8px;
             }
+
             QLabel#infoLabel {
                 background: #e5eef7;
                 color: #1f2937;
@@ -106,6 +101,20 @@ class AuditMainWindow(QMainWindow):
                 padding: 8px;
                 min-height: 28px;
             }
+
+            QLabel#contextLabel {
+                color: rgba(31, 41, 55, 140);
+                font-size: 16px;
+                padding: 4px 10px;
+            }
+
+            QLabel#previewHeader {
+                color: #374151;
+                font-size: 18px;
+                font-weight: 600;
+                padding-bottom: 6px;
+            }
+
             QPushButton {
                 background: #2563eb;
                 color: white;
@@ -114,19 +123,33 @@ class AuditMainWindow(QMainWindow):
                 padding: 14px;
                 font-size: 18px;
                 font-weight: 600;
+                min-height: 52px;
             }
+
             QPushButton:hover {
                 background: #1d4ed8;
             }
+
             QPushButton:pressed {
                 background: #1e40af;
             }
-            QPushButton.secondary {
+
+            QPushButton[role="secondary"] {
                 background: #6b7280;
             }
-            QPushButton.danger {
+
+            QPushButton[role="secondary"]:hover {
+                background: #4b5563;
+            }
+
+            QPushButton[role="danger"] {
                 background: #dc2626;
             }
+
+            QPushButton[role="danger"]:hover {
+                background: #b91c1c;
+            }
+
             QListWidget {
                 background: white;
                 border: 1px solid #d1d5db;
@@ -134,19 +157,23 @@ class AuditMainWindow(QMainWindow):
                 font-size: 18px;
                 padding: 6px;
             }
+
             QListWidget::item {
                 padding: 12px;
                 margin: 4px;
                 border-radius: 8px;
             }
+
             QListWidget::item:selected {
                 background: #dbeafe;
                 color: #111827;
             }
+
             QFrame#previewFrame {
                 background: #111827;
                 border-radius: 14px;
             }
+
             QLabel#previewLabel {
                 color: #e5e7eb;
                 font-size: 18px;
@@ -154,13 +181,18 @@ class AuditMainWindow(QMainWindow):
             """
         )
 
+        for btn in self.findChildren(QPushButton):
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+
     def _make_preview_label(self) -> QLabel:
-        frame = QLabel("Preview")
-        frame.setAlignment(Qt.AlignCenter)
-        frame.setObjectName("previewLabel")
-        frame.setMinimumSize(400, 300)
-        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        return frame
+        label = QLabel("Preview")
+        label.setAlignment(Qt.AlignCenter)
+        label.setObjectName("previewLabel")
+        label.setMinimumSize(400, 300)
+        label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        label.setWordWrap(True)
+        return label
 
     def _make_preview_container(self, label: QLabel) -> QFrame:
         frame = QFrame()
@@ -180,19 +212,20 @@ class AuditMainWindow(QMainWindow):
         self.btn_create_audit.clicked.connect(
             lambda: self._dispatch("CREATE_NEW_AUDIT")
         )
-
         layout.addWidget(self.btn_create_audit, alignment=Qt.AlignCenter)
+
         layout.addStretch()
 
         bottom = QHBoxLayout()
+
         self.btn_edit_audit = QPushButton("Edit Audit")
-        self.btn_edit_audit.setProperty("class", "secondary")
+        self.btn_edit_audit.setProperty("role", "secondary")
         self.btn_edit_audit.clicked.connect(
-            lambda: self.show_info("Edit Audit is not implemented yet.")
+            lambda: self.show_info_banner("Edit Audit is not implemented yet.")
         )
 
         self.btn_quit_start = QPushButton("Quit")
-        self.btn_quit_start.setProperty("class", "danger")
+        self.btn_quit_start.setProperty("role", "danger")
         self.btn_quit_start.clicked.connect(self.close)
 
         bottom.addWidget(self.btn_edit_audit)
@@ -207,9 +240,13 @@ class AuditMainWindow(QMainWindow):
         layout = QHBoxLayout(page)
 
         left = QVBoxLayout()
+
         self.btn_back_location = QPushButton("Back")
+        self.btn_back_location.setProperty("role", "secondary")
         self.btn_back_location.clicked.connect(lambda: self._dispatch("BACK_TO_START"))
+
         self.btn_quit_location = QPushButton("Quit")
+        self.btn_quit_location.setProperty("role", "danger")
         self.btn_quit_location.clicked.connect(self.close)
 
         left.addWidget(self.btn_back_location, alignment=Qt.AlignTop | Qt.AlignLeft)
@@ -224,7 +261,6 @@ class AuditMainWindow(QMainWindow):
 
         layout.addLayout(left, stretch=3)
         layout.addLayout(right, stretch=1)
-
         return page
 
     def _build_asset_category_page(self) -> QWidget:
@@ -232,11 +268,15 @@ class AuditMainWindow(QMainWindow):
         layout = QHBoxLayout(page)
 
         left = QVBoxLayout()
+
         self.btn_back_asset = QPushButton("Back")
+        self.btn_back_asset.setProperty("role", "secondary")
         self.btn_back_asset.clicked.connect(
             lambda: self._dispatch("BACK_TO_LOCATION_SELECT")
         )
+
         self.btn_quit_asset = QPushButton("Quit")
+        self.btn_quit_asset.setProperty("role", "danger")
         self.btn_quit_asset.clicked.connect(self.close)
 
         left.addWidget(self.btn_back_asset, alignment=Qt.AlignTop | Qt.AlignLeft)
@@ -251,27 +291,43 @@ class AuditMainWindow(QMainWindow):
 
         layout.addLayout(left, stretch=3)
         layout.addLayout(right, stretch=1)
-
         return page
 
     def _build_item_menu_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
 
-        top = QVBoxLayout()
+        top_row = QHBoxLayout()
+
+        left_top = QVBoxLayout()
+
         self.btn_back_item_location = QPushButton("Back to Location Select")
+        self.btn_back_item_location.setProperty("role", "secondary")
         self.btn_back_item_location.clicked.connect(
             lambda: self._dispatch("BACK_TO_LOCATION_SELECT")
         )
+
         self.btn_back_item_asset = QPushButton("Back to Asset Category Select")
+        self.btn_back_item_asset.setProperty("role", "secondary")
         self.btn_back_item_asset.clicked.connect(
             lambda: self._dispatch("BACK_TO_ASSET_CATEGORY_SELECT")
         )
 
-        top.addWidget(self.btn_back_item_location, alignment=Qt.AlignLeft)
-        top.addWidget(self.btn_back_item_asset, alignment=Qt.AlignLeft)
-        layout.addLayout(top)
+        left_top.addWidget(self.btn_back_item_location, alignment=Qt.AlignLeft)
+        left_top.addWidget(self.btn_back_item_asset, alignment=Qt.AlignLeft)
 
+        top_row.addLayout(left_top)
+        top_row.addStretch()
+
+        self.item_menu_context_label = QLabel("")
+        self.item_menu_context_label.setObjectName("contextLabel")
+        self.item_menu_context_label.setAlignment(Qt.AlignRight | Qt.AlignTop)
+        top_row.addWidget(
+            self.item_menu_context_label,
+            alignment=Qt.AlignTop | Qt.AlignRight,
+        )
+
+        layout.addLayout(top_row)
         layout.addStretch()
 
         self.btn_add_new_item = QPushButton("Add New Item")
@@ -284,6 +340,7 @@ class AuditMainWindow(QMainWindow):
         layout.addStretch()
 
         self.btn_quit_item = QPushButton("Quit")
+        self.btn_quit_item.setProperty("role", "danger")
         self.btn_quit_item.clicked.connect(self.close)
         layout.addWidget(self.btn_quit_item, alignment=Qt.AlignLeft)
 
@@ -299,45 +356,56 @@ class AuditMainWindow(QMainWindow):
         right = QVBoxLayout()
         right.addStretch()
 
-        self.btn_take_picture = QPushButton("📷 Take Picture")
-        self.btn_take_picture.setMinimumHeight(80)
+        self.btn_take_picture = QPushButton("📷")
+        self.btn_take_picture.setMinimumSize(110, 110)
+        self.btn_take_picture.setToolTip("Take Picture")
         self.btn_take_picture.clicked.connect(lambda: self._dispatch("TAKE_PICTURE"))
 
         self.btn_back_camera = QPushButton("Back")
+        self.btn_back_camera.setProperty("role", "secondary")
         self.btn_back_camera.clicked.connect(
             lambda: self._dispatch("CANCEL_CAMERA_CAPTURE")
         )
 
-        right.addWidget(self.btn_take_picture)
+        right.addWidget(self.btn_take_picture, alignment=Qt.AlignCenter)
         right.addWidget(self.btn_back_camera)
         right.addStretch()
 
         self.btn_quit_camera = QPushButton("Quit")
+        self.btn_quit_camera.setProperty("role", "danger")
         self.btn_quit_camera.clicked.connect(self.close)
         right.addWidget(self.btn_quit_camera)
 
         layout.addWidget(preview_container, stretch=1)
         layout.addLayout(right, stretch=1)
-
         return page
 
     def _build_additional_images_page(self) -> QWidget:
         page = QWidget()
         layout = QHBoxLayout(page)
 
+        left = QVBoxLayout()
+
+        self.additional_preview_header = QLabel("Preview")
+        self.additional_preview_header.setObjectName("previewHeader")
+
         self.additional_image_preview_label = self._make_preview_label()
         preview_container = self._make_preview_container(self.additional_image_preview_label)
+
+        left.addWidget(self.additional_preview_header)
+        left.addWidget(preview_container, stretch=1)
 
         right = QVBoxLayout()
         right.addStretch()
 
-        self.btn_take_additional = QPushButton("➕ Take Additional Images")
+        self.btn_take_additional = QPushButton("Take Additional Images")
         self.btn_take_additional.setMinimumHeight(80)
         self.btn_take_additional.clicked.connect(
             lambda: self._dispatch("TAKE_ADDITIONAL_IMAGE")
         )
 
         self.btn_back_additional = QPushButton("Back")
+        self.btn_back_additional.setProperty("role", "secondary")
         self.btn_back_additional.clicked.connect(
             lambda: self._dispatch("END_ITEM_IMAGES")
         )
@@ -347,12 +415,12 @@ class AuditMainWindow(QMainWindow):
         right.addStretch()
 
         self.btn_quit_additional = QPushButton("Quit")
+        self.btn_quit_additional.setProperty("role", "danger")
         self.btn_quit_additional.clicked.connect(self.close)
         right.addWidget(self.btn_quit_additional)
 
-        layout.addWidget(preview_container, stretch=1)
+        layout.addLayout(left, stretch=1)
         layout.addLayout(right, stretch=1)
-
         return page
 
     def _build_camera_capture_additional_page(self) -> QWidget:
@@ -365,28 +433,30 @@ class AuditMainWindow(QMainWindow):
         right = QVBoxLayout()
         right.addStretch()
 
-        self.btn_take_picture_additional = QPushButton("📷 Take Picture")
-        self.btn_take_picture_additional.setMinimumHeight(80)
+        self.btn_take_picture_additional = QPushButton("📷")
+        self.btn_take_picture_additional.setMinimumSize(110, 110)
+        self.btn_take_picture_additional.setToolTip("Take Picture")
         self.btn_take_picture_additional.clicked.connect(
             lambda: self._dispatch("TAKE_PICTURE")
         )
 
         self.btn_back_camera_additional = QPushButton("Back")
+        self.btn_back_camera_additional.setProperty("role", "secondary")
         self.btn_back_camera_additional.clicked.connect(
             lambda: self._dispatch("CANCEL_CAMERA_CAPTURE")
         )
 
-        right.addWidget(self.btn_take_picture_additional)
+        right.addWidget(self.btn_take_picture_additional, alignment=Qt.AlignCenter)
         right.addWidget(self.btn_back_camera_additional)
         right.addStretch()
 
         self.btn_quit_camera_additional = QPushButton("Quit")
+        self.btn_quit_camera_additional.setProperty("role", "danger")
         self.btn_quit_camera_additional.clicked.connect(self.close)
         right.addWidget(self.btn_quit_camera_additional)
 
         layout.addWidget(preview_container, stretch=1)
         layout.addLayout(right, stretch=1)
-
         return page
 
     def _dispatch(self, event: str) -> None:
@@ -432,6 +502,14 @@ class AuditMainWindow(QMainWindow):
             item.setData(Qt.UserRole, cat["id"])
             self.asset_category_list.addItem(item)
 
+    def set_item_menu_context(self, location_name: str, asset_category_name: str) -> None:
+        text = f"{location_name}\n{asset_category_name}".strip()
+        self.item_menu_context_label.setText(text)
+
+    def set_additional_preview_header(self, image_name: str) -> None:
+        stem = Path(image_name).stem
+        self.additional_preview_header.setText(f"Preview of {stem}")
+
     def show_info_banner(self, message: str) -> None:
         self.info_label.setText(message)
 
@@ -459,7 +537,7 @@ class AuditMainWindow(QMainWindow):
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        # refresh image scaling after resize
+
         current_pixmap = self.additional_image_preview_label.pixmap()
         if current_pixmap is not None and not current_pixmap.isNull():
             self.additional_image_preview_label.setPixmap(
@@ -479,7 +557,7 @@ class AuditMainWindow(QMainWindow):
                     Qt.SmoothTransformation,
                 )
             )
-            
+
     def _update_live_preview(self) -> None:
         if self.preview_service is None:
             return
@@ -541,29 +619,44 @@ class UIAdapter:
 
     def show_item_menu_screen(self) -> None:
         self.window.set_state_title("ITEM MENU")
+
+        location_name = ""
+        asset_category_name = ""
+
+        controller = getattr(self.window, "controller", None)
+        if controller is not None:
+            context = controller.context
+            if context.current_location is not None:
+                location_name = context.current_location.get("name", "")
+            if context.current_asset_category is not None:
+                asset_category_name = context.current_asset_category.get("name", "")
+
+        self.window.set_item_menu_context(location_name, asset_category_name)
         self.window.set_page("ITEM_MENU")
 
     def show_camera_capture_screen(self) -> None:
         self.window.set_state_title("CAMERA CAPTURE")
-        self.window.set_page("CAMERA_CAPTURE")
-        self.window.show_info_banner("Live camera preview running.")
         self.window.camera_preview_label.clear()
         self.window.camera_preview_label.setText("Starting live preview...")
+        self.window.set_page("CAMERA_CAPTURE")
+        self.window.show_info_banner("Live camera preview running.")
 
     def show_item_image_menu_screen(self, image_path: Path) -> None:
         self.window.set_state_title("ADDITIONAL IMAGES MENU")
+        self.window.set_additional_preview_header(image_path.name)
         self.window.set_page("ADDITIONAL_IMAGES_MENU")
         self.window.show_image_preview(image_path, target="additional_menu")
 
     def show_camera_capture_additional_screen(self) -> None:
         self.window.set_state_title("CAMERA CAPTURE ADDITIONAL")
+        self.window.additional_camera_preview_label.clear()
+        self.window.additional_camera_preview_label.setText("Starting live preview...")
         self.window.set_page("CAMERA_CAPTURE_ADDITIONAL")
         self.window.show_info_banner("Take more images of the same object.")
-        self.window.camera_preview_label.clear()
-        self.window.camera_preview_label.setText("Starting live preview...")
 
     def show_image_review_screen(self, image_path: Path) -> None:
         self.window.set_state_title("IMAGE REVIEW")
+        self.window.set_additional_preview_header(image_path.name)
         self.window.set_page("ADDITIONAL_IMAGES_MENU")
         self.window.show_image_preview(image_path, target="additional_menu")
 
