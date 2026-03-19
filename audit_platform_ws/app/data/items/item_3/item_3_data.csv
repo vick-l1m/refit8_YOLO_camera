@@ -1,0 +1,12 @@
+field,value
+item_name,item_3
+image_name,item_3.jpg
+image_path,/home/polymaya/refit8_YOLO_camera/audit_platform_ws/app/data/items/item_3/item_3.jpg
+item_dir,/home/polymaya/refit8_YOLO_camera/audit_platform_ws/app/data/items/item_3
+additional_images_dir,/home/polymaya/refit8_YOLO_camera/audit_platform_ws/app/data/items/item_3/item_3_additional_images
+audit_id,20260319150141
+location_id,
+location_name,
+asset_category_id,
+asset_category_name,
+time_taken,2026-03-19T15:01:54

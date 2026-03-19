@@ -497,7 +497,7 @@ class AuditMainWindow(QMainWindow):
             h,
             bytes_per_line,
             QImage.Format_RGB888,
-        )
+        ).copy()
 
         pix = QPixmap.fromImage(image)
 
@@ -547,6 +547,8 @@ class UIAdapter:
         self.window.set_state_title("CAMERA CAPTURE")
         self.window.set_page("CAMERA_CAPTURE")
         self.window.show_info_banner("Live camera preview running.")
+        self.window.camera_preview_label.clear()
+        self.window.camera_preview_label.setText("Starting live preview...")
 
     def show_item_image_menu_screen(self, image_path: Path) -> None:
         self.window.set_state_title("ADDITIONAL IMAGES MENU")
@@ -557,6 +559,8 @@ class UIAdapter:
         self.window.set_state_title("CAMERA CAPTURE ADDITIONAL")
         self.window.set_page("CAMERA_CAPTURE_ADDITIONAL")
         self.window.show_info_banner("Take more images of the same object.")
+        self.window.camera_preview_label.clear()
+        self.window.camera_preview_label.setText("Starting live preview...")
 
     def show_image_review_screen(self, image_path: Path) -> None:
         self.window.set_state_title("IMAGE REVIEW")

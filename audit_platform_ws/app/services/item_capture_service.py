@@ -29,7 +29,6 @@ from pathlib import Path
 from typing import Any, Dict
 
 from app.models.app_context import AppContext
-from src.camera_capture import CameraCapture, CaptureConfig, RPICamStillConfig
 
 
 class ItemCaptureService:
@@ -58,7 +57,7 @@ class ItemCaptureService:
         additional_images_dir = item_dir / f"{item_name}_additional_images"
         additional_images_dir.mkdir(parents=True, exist_ok=True)
 
-        self._capture_to_path(image_path)
+        self._capture_to_path(context, image_path)
 
         self._write_item_csv(
             csv_path=csv_path,
@@ -111,7 +110,7 @@ class ItemCaptureService:
         image_name = f"{item_name}_{additional_number}.jpg"
         image_path = additional_images_dir / image_name
 
-        self._capture_to_path(image_path)
+        self._capture_to_path(context, image_path)
 
         return {
             "item_name": item_name,
@@ -122,26 +121,13 @@ class ItemCaptureService:
             "time_taken": time_taken,
         }
 
-    def _capture_to_path(self, image_path: Path) -> None:
-        capture_cfg = CaptureConfig(
-            backend="rpicam-still",
-            rpicam=RPICamStillConfig(
-                width=1920,
-                height=1080,
-                time_ms=3000,
-                preview=False,
-                autofocus=True,
-                af_mode="continuous",
-            ),
-        )
+    def _capture_to_path(self, context: AppContext, image_path: Path) -> None:
+        if context.preview_service is None:
+            raise RuntimeError("Preview/camera service is not available.")
 
-        with CameraCapture(capture_cfg) as camera:
-            camera.capture_to_file(image_path)
+        context.preview_service.capture_to_file(image_path)
 
     def _get_next_item_number(self) -> int:
-        """
-        Find the next available item number by scanning existing item_x folders.
-        """
         max_num = 0
         pattern = re.compile(r"^item_(\d+)$")
 
@@ -163,12 +149,6 @@ class ItemCaptureService:
         additional_images_dir: Path,
         item_name: str,
     ) -> int:
-        """
-        Find the next available additional image number for this item.
-        Looks for files like:
-            item_3_1.jpg
-            item_3_2.jpg
-        """
         max_num = 0
         pattern = re.compile(rf"^{re.escape(item_name)}_(\d+)\.jpg$")
 
@@ -196,12 +176,6 @@ class ItemCaptureService:
         additional_images_dir: Path,
         time_taken: str,
     ) -> None:
-        """
-        Write metadata in a two-column CSV:
-            field,value
-
-        This is more readable for a person and still imports nicely into Excel.
-        """
         audit = context.current_audit
 
         rows = [
@@ -222,3 +196,4 @@ class ItemCaptureService:
         with csv_path.open("w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerows(rows)
+

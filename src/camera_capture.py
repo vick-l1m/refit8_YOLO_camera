@@ -131,6 +131,12 @@ class CameraCapture:
                 self._picam2.stop()
             except Exception:
                 pass
+
+            try: 
+                self._picam2.close()
+            except Exception:
+                pass
+
             self._picam2 = None
 
         if self._backend == "opencv" and self._cap is not None:
@@ -141,6 +147,8 @@ class CameraCapture:
             self._cap = None
 
         self._backend = None
+
+        time.sleep(0.3)
 
     def __enter__(self) -> "CameraCapture":
         self.start()
@@ -207,7 +215,7 @@ class CameraCapture:
 
         cmd += self._rpicam_autofocus_args()
         subprocess.run(cmd, check=True)
-
+  
     # ----------------------------
     # Unified capture_rgb()
     # ----------------------------
@@ -239,7 +247,9 @@ class CameraCapture:
             assert self._picam2 is not None
             frame = self._picam2.capture_array()
             if frame.ndim == 3 and frame.shape[2] == 3:
-                return frame.astype(np.uint8)
+                import cv2
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                return rgb.astype(np.uint8)
             raise RuntimeError(f"Unexpected Picamera2 frame shape: {frame.shape}")
 
         # OpenCV fallback returns BGR

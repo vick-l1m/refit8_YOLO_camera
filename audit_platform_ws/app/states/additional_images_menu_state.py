@@ -31,8 +31,12 @@ class AdditionalImagesMenuState(State):
     ) -> None:
         if event == "TAKE_ADDITIONAL_IMAGE":
             controller.transition_to("CAMERA_CAPTURE_ADDITIONAL")
+
         elif event == "END_ITEM_IMAGES":
+            if context.preview_service is not None:
+                context.preview_service.stop()
             controller.transition_to("ITEM_MENU")
+
         else:
             controller.ui.show_error(
                 f"Unsupported event '{event}' in state '{self.name}'"
