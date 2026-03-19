@@ -8,32 +8,17 @@
 /refit8_YOLO_camera/audit_platform_ws/app/data/items
 
 # python
+/__pycache__/
 src/Arducam_ws/__pycache__/
 src/__pycache__/
+app/__pycache__
+app/controller/__pycache__
+app/services/__pycache__
+app/states/__pycache__
+app/ui/__pycache__
 
-	audit_platform_ws/app/__pycache__/__init__.cpython-313.pyc
-	audit_platform_ws/app/__pycache__/main.cpython-313.pyc
-	audit_platform_ws/app/controller/__pycache__/__init__.cpython-313.pyc
-	audit_platform_ws/app/controller/__pycache__/app_controller.cpython-313.pyc
-	audit_platform_ws/app/controller/__pycache__/state_machine.cpython-313.pyc
-	audit_platform_ws/app/data/items/
-	audit_platform_ws/app/models/__pycache__/__init__.cpython-313.pyc
-	audit_platform_ws/app/models/__pycache__/app_context.cpython-313.pyc
-	audit_platform_ws/app/models/__pycache__/audit_session.cpython-313.pyc
-	audit_platform_ws/app/services/__pycache__/__init__.cpython-313.pyc
-	audit_platform_ws/app/services/__pycache__/asset_category_service.cpython-313.pyc
-	audit_platform_ws/app/services/__pycache__/audit_service.cpython-313.pyc
-	audit_platform_ws/app/services/__pycache__/item_capture_service.cpython-313.pyc
-	audit_platform_ws/app/services/__pycache__/location_service.cpython-313.pyc
-	audit_platform_ws/app/states/__pycache__/__init__.cpython-313.pyc
-	audit_platform_ws/app/states/__pycache__/additional_images_menu_state.cpython-313.pyc
-	audit_platform_ws/app/states/__pycache__/asset_category_select_state.cpython-313.pyc
-	audit_platform_ws/app/states/__pycache__/camera_capture_additional_state.cpython-313.pyc
-	audit_platform_ws/app/states/__pycache__/camera_capture_state.cpython-313.pyc
-	audit_platform_ws/app/states/__pycache__/image_review_state.cpython-313.pyc
-	audit_platform_ws/app/states/__pycache__/item_menu_state.cpython-313.pyc
-	audit_platform_ws/app/states/__pycache__/location_select_state.cpython-313.pyc
-	audit_platform_ws/app/states/__pycache__/start_state.cpython-313.pyc
-	audit_platform_ws/app/states/__pycache__/state.cpython-313.pyc
-	audit_platform_ws/app/ui/__pycache__/__init__.cpython-313.pyc
-	audit_platform_ws/app/ui/__pycache__/test_ui_adapter.cpython-313.pyc
+audit_platform_ws/app/__pycache__/
+audit_platform_ws/app/controller/__pycache__/
+audit_platform_ws/app/services/__pycache__/
+audit_platform_ws/app/states/__pycache__/
+
