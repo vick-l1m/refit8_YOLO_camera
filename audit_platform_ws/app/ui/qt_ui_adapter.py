@@ -461,7 +461,7 @@ class AuditMainWindow(QMainWindow):
         super().resizeEvent(event)
         # refresh image scaling after resize
         current_pixmap = self.additional_image_preview_label.pixmap()
-        if current_pixmap is not None:
+        if current_pixmap is not None and not current_pixmap.isNull():
             self.additional_image_preview_label.setPixmap(
                 current_pixmap.scaled(
                     self.additional_image_preview_label.size(),
@@ -471,7 +471,7 @@ class AuditMainWindow(QMainWindow):
             )
 
         current_pixmap2 = self.additional_camera_preview_label.pixmap()
-        if current_pixmap2 is not None:
+        if current_pixmap2 is not None and not current_pixmap2.isNull():
             self.additional_camera_preview_label.setPixmap(
                 current_pixmap2.scaled(
                     self.additional_camera_preview_label.size(),
@@ -479,7 +479,7 @@ class AuditMainWindow(QMainWindow):
                     Qt.SmoothTransformation,
                 )
             )
-
+            
     def _update_live_preview(self) -> None:
         if self.preview_service is None:
             return

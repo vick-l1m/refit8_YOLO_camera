@@ -36,7 +36,7 @@ class AssetCategorySelectState(State):
         controller: "AppController",
     ) -> None:
         if event.startswith("SELECT_ASSET_CATEGORY:"):
-            if context.selected_location is None:
+            if context.current_location is None:
                 controller.ui.show_error(
                     "You must select a location before selecting an asset category."
                 )

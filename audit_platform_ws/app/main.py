@@ -1,7 +1,8 @@
 """
 main.py
 
-Entry point for the audit platform application. Initializes the application context, UI, and controller, then starts the Qt event loop.
+Entry point for the audit platform application. 
+Initializes the application context, UI, and controller, then starts the Qt event loop.
 """
 
 from __future__ import annotations
