@@ -1,45 +1,91 @@
+"""
+live_camera_preview_service.py
+
+Embedded live camera preview service for Qt.
+
+This service continuously captures RGB frames using CameraCapture and stores
+the latest frame so the Qt UI can display it inside the application window.
+
+Preferred backend:
+- picamera2
+Fallback:
+- opencv
+
+Notes:
+- Do NOT use rpicam-still for live preview here.
+- Still image capture remains handled separately by ItemCaptureService.
+"""
 from __future__ import annotations
 
-import shutil
-import subprocess
+import threading
+import time
 from typing import Optional
+
+import numpy as np
+
+from src.camera_capture import CameraCapture, CaptureConfig
 
 
 class LiveCameraPreviewService:
-    """
-    Starts/stops a live Raspberry Pi camera preview using rpicam-hello.
-    """
-
     def __init__(self) -> None:
-        self._process: Optional[subprocess.Popen] = None
+        self._camera: Optional[CameraCapture] = None
+        self._thread: Optional[threading.Thread] = None
+        self._running = False
+        self._lock = threading.Lock()
+        self._latest_frame: Optional[np.ndarray] = None
 
-    def start(self) -> subprocess.Popen:
-        if self._process is not None and self._process.poll() is None:
-            return self._process
-
-        if shutil.which("rpicam-hello") is None:
-            raise RuntimeError(
-                "rpicam-hello not found. Make sure rpicam-apps is installed."
-            )
-
-        # -t 0 means run continuously until killed
-        self._process = subprocess.Popen(
-            ["rpicam-hello", "-t", "0"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        return self._process
-
-    def stop(self) -> None:
-        if self._process is None:
+    def start(self) -> None:
+        if self._running:
             return
 
-        if self._process.poll() is None:
-            self._process.terminate()
-            try:
-                self._process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                self._process.kill()
-                self._process.wait()
+        cfg = CaptureConfig(
+            backend="auto",   # tries picamera2 first, then opencv
+            width=1280,
+            height=720,
+            warmup_s=0.3,
+        )
 
-        self._process = None
+        self._camera = CameraCapture(cfg)
+        self._camera.start()
+
+        self._running = True
+        self._thread = threading.Thread(target=self._capture_loop, daemon=True)
+        self._thread.start()
+
+    def _capture_loop(self) -> None:
+        while self._running and self._camera is not None:
+            try:
+                frame = self._camera.capture_rgb()
+                with self._lock:
+                    self._latest_frame = frame
+            except Exception:
+                # Avoid crashing the whole UI if one frame fails
+                time.sleep(0.05)
+                continue
+
+            time.sleep(0.03)  # ~30 FPS target
+
+    def get_latest_frame(self) -> Optional[np.ndarray]:
+        with self._lock:
+            if self._latest_frame is None:
+                return None
+            return self._latest_frame.copy()
+
+    def stop(self) -> None:
+        self._running = False
+
+        if self._thread is not None and self._thread.is_alive():
+            self._thread.join(timeout=1.0)
+
+        self._thread = None
+
+        if self._camera is not None:
+            try:
+                self._camera.stop()
+            except Exception:
+                pass
+
+        self._camera = None
+
+        with self._lock:
+            self._latest_frame = None

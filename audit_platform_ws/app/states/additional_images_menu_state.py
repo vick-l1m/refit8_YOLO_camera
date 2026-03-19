@@ -1,8 +1,14 @@
+"""
+additional_images_menu_state.py
+
+Defines the AdditionalImagesMenuState class, which represents the state where the user manages additional images for an audit item.
+"""
 from __future__ import annotations
 
 from app.models.app_context import AppContext
 from app.states.state import State
-from app.ui.test_ui_adapter import UIAdapter
+# from app.ui.test_ui_adapter import UIAdapter
+from app.ui.qt_ui_adapter import UIAdapter
 
 
 class AdditionalImagesMenuState(State):

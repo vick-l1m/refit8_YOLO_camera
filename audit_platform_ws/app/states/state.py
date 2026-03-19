@@ -9,7 +9,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from app.models.app_context import AppContext
-from app.ui.test_ui_adapter import UIAdapter
+# from app.ui.test_ui_adapter import UIAdapter
+from app.ui.qt_ui_adapter import UIAdapter
 
 
 class State(ABC):

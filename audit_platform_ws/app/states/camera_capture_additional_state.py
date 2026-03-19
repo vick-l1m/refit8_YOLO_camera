@@ -1,3 +1,11 @@
+"""
+camera_capture_additional_state.py
+
+Defines the CameraCaptureAdditionalState class, which represents the state where the user captures additional images of the item using the camera after taking the initial picture.
+
+When the user enters this state, a live camera preview is launched along with a preview of the original image.
+When the user takes a picture or leaves the state, the previews are stopped.
+"""
 from __future__ import annotations
 
 import shutil
@@ -8,11 +16,21 @@ from app.models.app_context import AppContext
 from app.services.item_capture_service import ItemCaptureService
 from app.services.live_camera_preview_service import LiveCameraPreviewService
 from app.states.state import State
-from app.ui.test_ui_adapter import UIAdapter
+# from app.ui.test_ui_adapter import UIAdapter
 
 
 class CameraCaptureAdditionalState(State):
     name = "CAMERA_CAPTURE_ADDITIONAL"
+
+    # def _start_preview(self, context: AppContext, ui: UIAdapter) -> None:
+    #     try:
+    #         if context.preview_service is None:
+    #             context.preview_service = LiveCameraPreviewService()
+
+    #         context.preview_service.start()
+    #         ui.show_info("Live camera preview started.")
+    #     except Exception as e:
+    #         ui.show_error(f"Could not start live preview: {e}")
 
     def _start_preview(self, context: AppContext, ui: UIAdapter) -> None:
         try:
@@ -20,6 +38,10 @@ class CameraCaptureAdditionalState(State):
                 context.preview_service = LiveCameraPreviewService()
 
             context.preview_service.start()
+
+            if hasattr(ui, "set_preview_service"):
+                ui.set_preview_service(context.preview_service)
+
             ui.show_info("Live camera preview started.")
         except Exception as e:
             ui.show_error(f"Could not start live preview: {e}")

@@ -1,8 +1,16 @@
+"""
+item_menu_state.py
+
+Defines the ItemMenuState class, which represents the state where the user can choose to capture an image of the item or manage existing images.
+When the user enters this state, they are presented with options to take a picture or manage additional images.
+"""
+
 from __future__ import annotations
 
 from app.models.app_context import AppContext
 from app.states.state import State
-from app.ui.test_ui_adapter import UIAdapter
+# from app.ui.test_ui_adapter import UIAdapter
+from app.ui.qt_ui_adapter import UIAdapter
 
 
 class ItemMenuState(State):

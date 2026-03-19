@@ -3,13 +3,13 @@ asset_category_select_state.py
 
 Defines the AssetCategorySelectState class, which represents the state where the user selects an asset category for the audit.
 """
-
 from __future__ import annotations
 
 from app.models.app_context import AppContext
 from app.services.asset_category_service import AssetCategoryService
 from app.states.state import State
-from app.ui.test_ui_adapter import UIAdapter
+# from app.ui.test_ui_adapter import UIAdapter
+from app.ui.qt_ui_adapter import UIAdapter
 
 
 class AssetCategorySelectState(State):
@@ -42,7 +42,7 @@ class AssetCategorySelectState(State):
                 )
                 controller.transition_to("LOCATION_SELECT")
                 return
-            
+
             category_id = event.split(":", 1)[1].strip()
 
             selected = next(
@@ -58,18 +58,20 @@ class AssetCategorySelectState(State):
                 controller.ui.show_error(f"Unknown asset category id: {category_id}")
                 return
 
-            context.selected_asset_category = selected
+            context.current_asset_category = selected
 
             if context.current_audit is not None:
-                context.current_audit.selected_asset_category_id = selected["id"]
-                context.current_audit.selected_asset_category_name = selected["name"]
+                context.current_audit.current_asset_category_id = selected["id"]
+                context.current_audit.current_asset_category_name = selected["name"]
 
             controller.ui.show_info(
                 f"Selected asset category: {selected['name']} ({selected['id']})"
             )
 
-            #  Next State
             controller.transition_to("ITEM_MENU")
+
+        elif event == "BACK_TO_LOCATION_SELECT":
+            controller.transition_to("LOCATION_SELECT")
 
         else:
             controller.ui.show_error(

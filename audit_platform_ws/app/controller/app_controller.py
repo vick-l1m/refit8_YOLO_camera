@@ -20,8 +20,8 @@ from app.states.additional_images_menu_state import AdditionalImagesMenuState
 from app.states.camera_capture_additional_state import CameraCaptureAdditionalState
 
 # UI Adapter
-from app.ui.test_ui_adapter import UIAdapter
-
+# from app.ui.test_ui_adapter import UIAdapter
+from app.ui.qt_ui_adapter import UIAdapter
 
 class AppController:
     def __init__(self, context: AppContext, ui: UIAdapter) -> None:

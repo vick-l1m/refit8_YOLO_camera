@@ -129,7 +129,7 @@ class ItemCaptureService:
                 width=1920,
                 height=1080,
                 time_ms=3000,
-                preview=True,
+                preview=False,
                 autofocus=True,
                 af_mode="continuous",
             ),

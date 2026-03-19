@@ -8,7 +8,8 @@ from __future__ import annotations
 from app.models.app_context import AppContext
 from app.services.location_service import LocationService
 from app.states.state import State
-from app.ui.test_ui_adapter import UIAdapter
+# from app.ui.test_ui_adapter import UIAdapter
+from app.ui.qt_ui_adapter import UIAdapter
 
 
 class LocationSelectState(State):
@@ -46,18 +47,20 @@ class LocationSelectState(State):
                 controller.ui.show_error(f"Unknown location id: {location_id}")
                 return
 
-            context.selected_location = selected
+            context.current_location = selected
 
             if context.current_audit is not None:
-                context.current_audit.selected_location_id = selected["id"]
-                context.current_audit.selected_location_name = selected["name"]
+                context.current_audit.current_location_id = selected["id"]
+                context.current_audit.current_location_name = selected["name"]
 
             controller.ui.show_info(
                 f"Selected location: {selected['name']} ({selected['id']})"
             )
 
-            #  Next State
             controller.transition_to("ASSET_CATEGORY_SELECT")
+
+        elif event == "BACK_TO_START":
+            controller.transition_to("START")
 
         else:
             controller.ui.show_error(

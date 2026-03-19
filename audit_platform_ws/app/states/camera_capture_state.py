@@ -14,11 +14,21 @@ from app.models.app_context import AppContext
 from app.services.item_capture_service import ItemCaptureService
 from app.services.live_camera_preview_service import LiveCameraPreviewService
 from app.states.state import State
-from app.ui.test_ui_adapter import UIAdapter
-
+# from app.ui.test_ui_adapter import UIAdapter
+from app.ui.qt_ui_adapter import UIAdapter
 
 class CameraCaptureState(State):
     name = "CAMERA_CAPTURE"
+
+    # def _start_preview(self, context: AppContext, ui: UIAdapter) -> None:
+    #     try:
+    #         if context.preview_service is None:
+    #             context.preview_service = LiveCameraPreviewService()
+
+    #         context.preview_service.start()
+    #         ui.show_info("Live camera preview started.")
+    #     except Exception as e:
+    #         ui.show_error(f"Could not start live preview: {e}")
 
     def _start_preview(self, context: AppContext, ui: UIAdapter) -> None:
         try:
@@ -26,9 +36,14 @@ class CameraCaptureState(State):
                 context.preview_service = LiveCameraPreviewService()
 
             context.preview_service.start()
+
+            if hasattr(ui, "set_preview_service"):
+                ui.set_preview_service(context.preview_service)
+
             ui.show_info("Live camera preview started.")
         except Exception as e:
             ui.show_error(f"Could not start live preview: {e}")
+
 
     def _stop_preview(self, context: AppContext) -> None:
         try:

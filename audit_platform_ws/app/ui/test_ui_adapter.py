@@ -1,3 +1,12 @@
+"""
+test_ui_adapter.py
+
+Defines the UIAdapter class, which serves as a simple console-based adapter for testing the 
+    application logic without a full Qt UI.
+This allows us to run the application in a terminal and verify state transitions and logic 
+    without needing the Qt event loop or GUI components.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,11 +23,13 @@ class UIAdapter:
         print("\n=== LOCATION SELECT ===")
         for idx, loc in enumerate(locations, start=1):
             print(f"{idx}. {loc['name']} ({loc['id']})")
+         print("  b -> Back to audit menu")
 
     def show_asset_category_screen(self, categories: List[Dict[str, Any]]) -> None:
         print("\n=== ASSET CATEGORY SELECT ===")
         for idx, category in enumerate(categories, start=1):
             print(f"{idx}. {category['name']} ({category['id']})")
+        print("  b -> Back to location select")
 
     def show_item_menu_screen(self) -> None:
         print("\n=== ITEM MENU ===")
