@@ -4,6 +4,9 @@ app_context.py
 
 Defines the AppContext model, which represents the application context and holds shared state.
 
+Date: 19/03/2026
+Version: 1.1
+Maintainer: Victor Lim - victor@polymaya.tech
 """
 from __future__ import annotations
 
@@ -35,3 +38,16 @@ class AppContext:
 
     preview_service: Optional[Any] = None
     base_image_preview_process: Optional[Any] = None
+
+    # AprilTag measurement
+    apriltag_detected: bool = False
+    apriltag_detection_family: str = "tag25h9"
+    apriltag_tag_size_m: Optional[float] = None
+    apriltag_intrinsics_path: Optional[Path] = None
+
+    apriltag_source_image_path: Optional[Path] = None
+    apriltag_annotated_image_path: Optional[Path] = None
+    apriltag_measurements_csv_path: Optional[Path] = None
+
+    apriltag_selected_tag: Optional[Dict[str, Any]] = None
+    apriltag_session: Optional[Any] = None

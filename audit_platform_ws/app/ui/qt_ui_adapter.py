@@ -1,10 +1,20 @@
+#!/usr/bin/env python3
+# Metadata:
+# File: audit_platform_ws/app/ui/qt_ui_adapter.py
+# Purpose: Qt UI adapter and main window for the audit app, including AprilTag measurement screen integration.
+# Date: 19/03/2026
+# Version: 1.1
+# Maintainer: Victor Lim - victor@polymaya.tech
+
 from __future__ import annotations
+
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt, QTimer, QSize
-from PySide6.QtGui import QFont, QImage, QPixmap
+
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QLabel,
     QListWidget,
@@ -19,6 +29,8 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QFrame,
 )
+
+from app.ui.april_tag_measure_screen import AprilTagMeasureScreen
 
 
 class AuditMainWindow(QMainWindow):
@@ -36,6 +48,7 @@ class AuditMainWindow(QMainWindow):
 
     def set_controller(self, controller) -> None:
         self.controller = controller
+        self.april_tag_measure_page.set_controller(controller)
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -66,6 +79,7 @@ class AuditMainWindow(QMainWindow):
         self.camera_capture_page = self._build_camera_capture_page()
         self.additional_images_page = self._build_additional_images_page()
         self.camera_capture_additional_page = self._build_camera_capture_additional_page()
+        self.april_tag_measure_page = self._build_april_tag_measure_page()
 
         self.stack.addWidget(self.start_page)
         self.stack.addWidget(self.location_page)
@@ -74,6 +88,7 @@ class AuditMainWindow(QMainWindow):
         self.stack.addWidget(self.camera_capture_page)
         self.stack.addWidget(self.additional_images_page)
         self.stack.addWidget(self.camera_capture_additional_page)
+        self.stack.addWidget(self.april_tag_measure_page)
 
     def _build_timers(self) -> None:
         self.preview_timer = QTimer(self)
@@ -459,6 +474,9 @@ class AuditMainWindow(QMainWindow):
         layout.addLayout(right, stretch=1)
         return page
 
+    def _build_april_tag_measure_page(self) -> AprilTagMeasureScreen:
+        return AprilTagMeasureScreen(controller=self.controller)
+
     def _dispatch(self, event: str) -> None:
         if self.controller is not None:
             self.controller.dispatch(event)
@@ -483,6 +501,7 @@ class AuditMainWindow(QMainWindow):
             "CAMERA_CAPTURE": self.camera_capture_page,
             "ADDITIONAL_IMAGES_MENU": self.additional_images_page,
             "CAMERA_CAPTURE_ADDITIONAL": self.camera_capture_additional_page,
+            "APRIL_TAG_MEASURE": self.april_tag_measure_page,
         }
         page = mapping.get(page_name)
         if page is not None:
@@ -538,25 +557,19 @@ class AuditMainWindow(QMainWindow):
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
 
-        current_pixmap = self.additional_image_preview_label.pixmap()
-        if current_pixmap is not None and not current_pixmap.isNull():
-            self.additional_image_preview_label.setPixmap(
-                current_pixmap.scaled(
-                    self.additional_image_preview_label.size(),
-                    Qt.KeepAspectRatio,
-                    Qt.SmoothTransformation,
+        for label in (
+            self.additional_image_preview_label,
+            self.additional_camera_preview_label,
+        ):
+            current_pixmap = label.pixmap()
+            if current_pixmap is not None and not current_pixmap.isNull():
+                label.setPixmap(
+                    current_pixmap.scaled(
+                        label.size(),
+                        Qt.KeepAspectRatio,
+                        Qt.SmoothTransformation,
+                    )
                 )
-            )
-
-        current_pixmap2 = self.additional_camera_preview_label.pixmap()
-        if current_pixmap2 is not None and not current_pixmap2.isNull():
-            self.additional_camera_preview_label.setPixmap(
-                current_pixmap2.scaled(
-                    self.additional_camera_preview_label.size(),
-                    Qt.KeepAspectRatio,
-                    Qt.SmoothTransformation,
-                )
-            )
 
     def _update_live_preview(self) -> None:
         if self.preview_service is None:
@@ -659,6 +672,15 @@ class UIAdapter:
         self.window.set_additional_preview_header(image_path.name)
         self.window.set_page("ADDITIONAL_IMAGES_MENU")
         self.window.show_image_preview(image_path, target="additional_menu")
+
+    def show_april_tag_measure_screen(self, image_path: Path, session) -> None:
+        self.window.set_state_title("APRIL TAG MEASURE")
+        self.window.april_tag_measure_page.set_session(
+            session=session,
+            image_path=image_path,
+        )
+        self.window.set_page("APRIL_TAG_MEASURE")
+        self.window.show_info_banner("Draw a line on the image to measure it.")
 
     def show_error(self, message: str) -> None:
         self.window.show_error_dialog(message)

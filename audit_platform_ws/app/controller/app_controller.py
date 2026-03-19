@@ -18,6 +18,7 @@ from app.states.camera_capture_state import CameraCaptureState
 from app.states.image_review_state import ImageReviewState
 from app.states.additional_images_menu_state import AdditionalImagesMenuState
 from app.states.camera_capture_additional_state import CameraCaptureAdditionalState
+from app.states.april_tag_measure_state import AprilTagMeasureState
 
 # UI Adapter
 # from app.ui.test_ui_adapter import UIAdapter
@@ -39,6 +40,7 @@ class AppController:
                 "IMAGE_REVIEW": ImageReviewState(),        
                 "ADDITIONAL_IMAGES_MENU": AdditionalImagesMenuState(),
                 "CAMERA_CAPTURE_ADDITIONAL": CameraCaptureAdditionalState(),
+                "APRIL_TAG_MEASURE": AprilTagMeasureState(),
             }
         )
 
